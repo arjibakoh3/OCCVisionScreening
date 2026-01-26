@@ -1092,7 +1092,7 @@ with right:
                             st.session_state["pending_payload"] = records[sel].to_dict() or {}
                             st.session_state["firebase_doc_id"] = records[sel].id
                             st.session_state["firebase_last_hash"] = ""
-                            st.experimental_rerun()
+                            st.rerun()
                     with col_b:
                         if st.button("บันทึกเคสนี้ขึ้น Firebase"):
                             _firebase_save_record(db, fb_collection, payload)
@@ -1149,7 +1149,7 @@ with right:
                             if st.button("โหลดไฟล์ที่เลือก"):
                                 payload_in = _drive_download_json(service, files[sel]["id"])
                                 st.session_state["pending_payload"] = payload_in
-                                st.experimental_rerun()
+                                st.rerun()
                         with col_b:
                             if st.button("อัปโหลดบันทึกนี้ขึ้นโฟลเดอร์"):
                                 filename = f"vision_{hn or 'no_hn'}_{exam_date}.json"
