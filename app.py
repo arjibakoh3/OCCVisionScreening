@@ -1066,19 +1066,21 @@ with right:
                     if records:
                         labels = [_firebase_label(doc) for doc in records]
                         sel = st.selectbox("เลือกเคสเพื่อโหลดเข้าแอป", options=list(range(len(records))), format_func=lambda i: labels[i])
-                        col_a, col_b = st.columns(2)
-                        with col_a:
-                            if st.button("โหลดเคสที่เลือก"):
-                                apply_payload_to_state(records[sel].to_dict() or {})
-                                st.session_state["firebase_doc_id"] = records[sel].id
-                                st.session_state["firebase_last_hash"] = ""
-                                st.experimental_rerun()
-                        with col_b:
-                            if st.button("บันทึกเคสนี้ขึ้น Firebase"):
-                                _firebase_save_record(db, fb_collection, payload)
-                                st.success("บันทึกสำเร็จ")
                     else:
+                        sel = None
                         st.info("ยังไม่มีข้อมูลใน collection นี้")
+
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if records and st.button("โหลดเคสที่เลือก"):
+                            apply_payload_to_state(records[sel].to_dict() or {})
+                            st.session_state["firebase_doc_id"] = records[sel].id
+                            st.session_state["firebase_last_hash"] = ""
+                            st.experimental_rerun()
+                    with col_b:
+                        if st.button("บันทึกเคสนี้ขึ้น Firebase"):
+                            _firebase_save_record(db, fb_collection, payload)
+                            st.success("บันทึกสำเร็จ")
                 except Exception as e:
                     st.error(f"เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
             else:
