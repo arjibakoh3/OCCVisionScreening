@@ -1017,7 +1017,7 @@ with right:
         else:
             secrets_fb = None
             secrets_fb_error = None
-            if "firebase" in st.secrets:
+            if st.secrets and "firebase" in st.secrets:
                 fb_section = st.secrets["firebase"]
                 # Prefer explicit TOML keys if present
                 required_keys = {
@@ -1108,7 +1108,7 @@ with right:
             st.warning("ยังไม่มีไลบรารี Google Drive API ในเครื่องนี้ (google-api-python-client).")
         else:
             secrets_gd = None
-            if "gdrive" in st.secrets:
+            if st.secrets and "gdrive" in st.secrets:
                 try:
                     secrets_gd = json.loads(st.secrets["gdrive"]["service_account_json"])
                     if not st.session_state.get("gdrive_folder_id"):
