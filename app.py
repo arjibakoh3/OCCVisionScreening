@@ -458,6 +458,9 @@ def _set_default_state() -> None:
         "firebase_collection": "vision_records",
         "firebase_refresh_sec": 10,
         "firebase_autorefresh": True,
+        "firebase_autosave": False,
+        "firebase_doc_id": "",
+        "firebase_last_hash": "",
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -585,6 +588,12 @@ def _firebase_save_record(db, collection: str, payload: Dict[str, Any]) -> None:
     payload_to_save = dict(payload)
     payload_to_save["_meta"] = {"created_at": firestore.SERVER_TIMESTAMP}
     db.collection(collection).add(payload_to_save)
+
+
+def _firebase_update_record(db, collection: str, doc_id: str, payload: Dict[str, Any]) -> None:
+    payload_to_save = dict(payload)
+    payload_to_save["_meta"] = {"updated_at": firestore.SERVER_TIMESTAMP}
+    db.collection(collection).document(doc_id).set(payload_to_save, merge=True)
 
 
 def _firebase_list_records(db, collection: str, limit: int = 50):
@@ -993,18 +1002,40 @@ with right:
             st.warning("ยังไม่มีไลบรารี Firebase (firebase-admin).")
         else:
             secrets_fb = None
+            secrets_fb_error = None
             if "firebase" in st.secrets:
-                try:
-                    secrets_fb = json.loads(st.secrets["firebase"]["service_account_json"])
-                    if not st.session_state.get("firebase_collection"):
-                        st.session_state["firebase_collection"] = st.secrets["firebase"].get("collection", "vision_records")
-                except Exception:
-                    secrets_fb = None
+                fb_section = st.secrets["firebase"]
+                if "service_account_json" in fb_section:
+                    try:
+                        secrets_fb = json.loads(fb_section["service_account_json"])
+                    except Exception as e:
+                        secrets_fb_error = f"อ่าน service_account_json ไม่ได้: {e}"
+                else:
+                    required_keys = {
+                        "type", "project_id", "private_key_id", "private_key", "client_email",
+                        "client_id", "auth_uri", "token_uri", "auth_provider_x509_cert_url",
+                        "client_x509_cert_url", "universe_domain",
+                    }
+                    if required_keys.issubset(set(fb_section.keys())):
+                        secrets_fb = {k: fb_section[k] for k in required_keys}
+                    else:
+                        secrets_fb_error = "ไม่มี service_account_json ใน Secrets"
+
+                if not st.session_state.get("firebase_collection"):
+                    st.session_state["firebase_collection"] = fb_section.get("collection", "vision_records")
+
+            if secrets_fb:
+                st.success("อ่าน Firebase Secrets สำเร็จ (พร้อมใช้งาน)")
+            elif secrets_fb_error:
+                st.warning(f"อ่าน Firebase Secrets ไม่สำเร็จ: {secrets_fb_error}")
+                st.caption("ตรวจว่ามีบรรทัด service_account_json = \"\"\"...\"\"\" และ collection ใน Secrets")
+
             fb_file = st.file_uploader("Service account JSON (Firebase)", type=["json"])
             fb_text = st.text_area("หรือวาง JSON ของ Service account ที่นี่ (Firebase)", value="", height=120)
             fb_collection = st.text_input("Firestore collection", key="firebase_collection")
             fb_refresh = st.number_input("รีเฟรชรายการทุก (วินาที)", min_value=5, max_value=60, value=st.session_state["firebase_refresh_sec"], key="firebase_refresh_sec")
             fb_auto = st.checkbox("เปิด Auto refresh รายการเคส", value=st.session_state["firebase_autorefresh"], key="firebase_autorefresh")
+            fb_autosave = st.checkbox("Auto update เมื่อแก้ฟอร์ม (ต้องโหลดเคสก่อน)", value=st.session_state["firebase_autosave"], key="firebase_autosave")
 
             fb_info = None
             if secrets_fb is not None:
@@ -1025,6 +1056,12 @@ with right:
                     db = _firebase_client_from_info(fb_info)
                     if fb_auto and hasattr(st, "autorefresh"):
                         st.autorefresh(interval=int(fb_refresh * 1000), key="firebase_autorefresh_tick")
+                    # Auto-update current case when form changes
+                    if fb_autosave and st.session_state.get("firebase_doc_id"):
+                        current_hash = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+                        if current_hash != st.session_state.get("firebase_last_hash"):
+                            _firebase_update_record(db, fb_collection, st.session_state["firebase_doc_id"], payload)
+                            st.session_state["firebase_last_hash"] = current_hash
                     records = _firebase_list_records(db, fb_collection, limit=50)
                     if records:
                         labels = [_firebase_label(doc) for doc in records]
@@ -1033,6 +1070,8 @@ with right:
                         with col_a:
                             if st.button("โหลดเคสที่เลือก"):
                                 apply_payload_to_state(records[sel].to_dict() or {})
+                                st.session_state["firebase_doc_id"] = records[sel].id
+                                st.session_state["firebase_last_hash"] = ""
                                 st.experimental_rerun()
                         with col_b:
                             if st.button("บันทึกเคสนี้ขึ้น Firebase"):
