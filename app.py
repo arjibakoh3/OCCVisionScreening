@@ -461,6 +461,7 @@ def _set_default_state() -> None:
         "firebase_autosave": False,
         "firebase_doc_id": "",
         "firebase_last_hash": "",
+        "pending_payload": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -631,6 +632,9 @@ st.set_page_config(page_title="Vision Screening (Titmus V2a/Optec 5000)", layout
 
 st.title("แบบฟอร์มบันทึกผลตรวจสมรรถภาพการมองเห็น (Electronic) — Titmus V2a / Optec 5000")
 _set_default_state()
+if st.session_state.get("pending_payload") is not None:
+    apply_payload_to_state(st.session_state["pending_payload"])
+    st.session_state["pending_payload"] = None
 
 with st.expander("ตั้งค่าการใช้งาน", expanded=True):
     col_a, col_b, col_c = st.columns([1.1, 1.1, 1.2])
@@ -1085,7 +1089,7 @@ with right:
                     col_a, col_b = st.columns(2)
                     with col_a:
                         if records and st.button("โหลดเคสที่เลือก"):
-                            apply_payload_to_state(records[sel].to_dict() or {})
+                            st.session_state["pending_payload"] = records[sel].to_dict() or {}
                             st.session_state["firebase_doc_id"] = records[sel].id
                             st.session_state["firebase_last_hash"] = ""
                             st.experimental_rerun()
@@ -1144,7 +1148,7 @@ with right:
                         with col_a:
                             if st.button("โหลดไฟล์ที่เลือก"):
                                 payload_in = _drive_download_json(service, files[sel]["id"])
-                                apply_payload_to_state(payload_in)
+                                st.session_state["pending_payload"] = payload_in
                                 st.experimental_rerun()
                         with col_b:
                             if st.button("อัปโหลดบันทึกนี้ขึ้นโฟลเดอร์"):
