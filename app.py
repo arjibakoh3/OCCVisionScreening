@@ -1005,21 +1005,21 @@ with right:
             secrets_fb_error = None
             if "firebase" in st.secrets:
                 fb_section = st.secrets["firebase"]
-                if "service_account_json" in fb_section:
+                # Prefer explicit TOML keys if present
+                required_keys = {
+                    "type", "project_id", "private_key_id", "private_key", "client_email",
+                    "client_id", "auth_uri", "token_uri", "auth_provider_x509_cert_url",
+                    "client_x509_cert_url", "universe_domain",
+                }
+                if required_keys.issubset(set(fb_section.keys())):
+                    secrets_fb = {k: fb_section[k] for k in required_keys}
+                elif "service_account_json" in fb_section:
                     try:
                         secrets_fb = json.loads(fb_section["service_account_json"])
                     except Exception as e:
                         secrets_fb_error = f"อ่าน service_account_json ไม่ได้: {e}"
                 else:
-                    required_keys = {
-                        "type", "project_id", "private_key_id", "private_key", "client_email",
-                        "client_id", "auth_uri", "token_uri", "auth_provider_x509_cert_url",
-                        "client_x509_cert_url", "universe_domain",
-                    }
-                    if required_keys.issubset(set(fb_section.keys())):
-                        secrets_fb = {k: fb_section[k] for k in required_keys}
-                    else:
-                        secrets_fb_error = "ไม่มี service_account_json ใน Secrets"
+                    secrets_fb_error = "Secrets ไม่ครบ (ต้องมี service_account_json หรือคีย์แยกครบชุด)"
 
                 if not st.session_state.get("firebase_collection"):
                     st.session_state["firebase_collection"] = fb_section.get("collection", "vision_records")
@@ -1028,7 +1028,7 @@ with right:
                 st.success("อ่าน Firebase Secrets สำเร็จ (พร้อมใช้งาน)")
             elif secrets_fb_error:
                 st.warning(f"อ่าน Firebase Secrets ไม่สำเร็จ: {secrets_fb_error}")
-                st.caption("ตรวจว่ามีบรรทัด service_account_json = \"\"\"...\"\"\" และ collection ใน Secrets")
+                st.caption("แนะนำใช้ TOML แบบแยกคีย์ (ไม่ใช้ service_account_json) หรือใส่ service_account_json ให้ถูกต้อง")
 
             fb_file = st.file_uploader("Service account JSON (Firebase)", type=["json"])
             fb_text = st.text_area("หรือวาง JSON ของ Service account ที่นี่ (Firebase)", value="", height=120)
