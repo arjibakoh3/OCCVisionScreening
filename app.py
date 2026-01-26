@@ -601,6 +601,16 @@ def _firebase_list_records(db, collection: str, limit: int = 50):
     return [doc for doc in query.stream()]
 
 
+def _match_keyword(doc, keyword: str) -> bool:
+    if not keyword:
+        return True
+    data = doc.to_dict() or {}
+    person = data.get("person", {})
+    name = str(person.get("name", "")).lower()
+    hn = str(person.get("hn", "")).lower()
+    return keyword.lower() in name or keyword.lower() in hn
+
+
 def _firebase_label(doc) -> str:
     data = doc.to_dict() or {}
     person = data.get("person", {})
@@ -1036,6 +1046,7 @@ with right:
             fb_refresh = st.number_input("รีเฟรชรายการทุก (วินาที)", min_value=5, max_value=60, value=st.session_state["firebase_refresh_sec"], key="firebase_refresh_sec")
             fb_auto = st.checkbox("เปิด Auto refresh รายการเคส", value=st.session_state["firebase_autorefresh"], key="firebase_autorefresh")
             fb_autosave = st.checkbox("Auto update เมื่อแก้ฟอร์ม (ต้องโหลดเคสก่อน)", value=st.session_state["firebase_autosave"], key="firebase_autosave")
+            fb_search = st.text_input("ค้นหา (HN/ชื่อ)", value="")
 
             fb_info = None
             if secrets_fb is not None:
@@ -1063,6 +1074,7 @@ with right:
                             _firebase_update_record(db, fb_collection, st.session_state["firebase_doc_id"], payload)
                             st.session_state["firebase_last_hash"] = current_hash
                     records = _firebase_list_records(db, fb_collection, limit=50)
+                    records = [doc for doc in records if _match_keyword(doc, fb_search)]
                     if records:
                         labels = [_firebase_label(doc) for doc in records]
                         sel = st.selectbox("เลือกเคสเพื่อโหลดเข้าแอป", options=list(range(len(records))), format_func=lambda i: labels[i])
