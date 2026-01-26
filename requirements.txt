@@ -1,0 +1,4 @@
+streamlit
+firebase-admin
+google-api-python-client
+google-auth
