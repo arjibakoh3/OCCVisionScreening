@@ -178,6 +178,22 @@ VA_MAP = {
 
 STEREO_MAP = {1: "400\"", 2: "200\"", 3: "100\"", 4: "70\"", 5: "50\"", 6: "40\"", 7: "30\"", 8: "25\"", 9: "20\""}
 
+FAR_VA_BE_KEY: List[str] = [
+    "T", "R", "R", "L", "T", "B", "L", "R", "L", "B", "R", "B", "T", "R"
+]
+
+FAR_VA_RE_KEY: List[str] = [
+    "T","L","T","T","B","B","L","B","R","T","R","L","B","R"
+]
+FAR_VA_LE_KEY: List[str] = [
+    "L","R","L","B","R","T","T","B","R","T","B","R","T","L"
+]
+FAR_STEREO_KEY: List[str] = [
+    "B","L","B","T","T","L","R","L","R"
+]
+
+FAR_COLOR_KEY: List[str] = ["12","5","26","6","16","x"]
+
 def fmt_va(x: Optional[int]) -> str:
     if x is None:
         return "N/A"
@@ -437,10 +453,44 @@ def _set_default_state() -> None:
         "exam_date": datetime.today(),
         "far_binocular_ok": True,
         "far_stereo": None,
+        "far_stereo_exam_enabled": False,
+        "far_stereo_exam_slide": 1,
+        "far_stereo_exam_wrong_streak": 0,
+        "far_stereo_exam_last_passed": 0,
+        "far_stereo_exam_stopped": False,
+        "far_stereo_exam_apply_pending": None,
+
         "far_color_correct": 8,
+        "far_color_exam_enabled": False,
+        "far_color_exam_slide": 1,
+        "far_color_exam_wrong_streak": 0,
+        "far_color_exam_last_passed": 0,
+        "far_color_exam_stopped": False,
+        "far_color_exam_apply_pending": None,
+
         "far_va_be": 8,
+        "far_va_be_exam_enabled": False,
+        "far_va_be_exam_slide": 1,
+        "far_va_be_exam_wrong_streak": 0,
+        "far_va_be_exam_last_passed": 0,
+        "far_va_be_exam_stopped": False,
+        "far_va_be_exam_apply_pending": None,
         "far_va_re": None,
+        "far_va_re_exam_enabled": False,
+        "far_va_re_exam_slide": 1,
+        "far_va_re_exam_wrong_streak": 0,
+        "far_va_re_exam_last_passed": 0,
+        "far_va_re_exam_stopped": False,
+        "far_va_re_exam_apply_pending": None,
+
         "far_va_le": None,
+        "far_va_le_exam_enabled": False,
+        "far_va_le_exam_slide": 1,
+        "far_va_le_exam_wrong_streak": 0,
+        "far_va_le_exam_last_passed": 0,
+        "far_va_le_exam_stopped": False,
+        "far_va_le_exam_apply_pending": None,
+
         "far_vphoria": None,
         "far_lphoria": None,
         "near_binocular_ok": True,
@@ -767,41 +817,373 @@ with left:
 
         # Keep Far vision fields in a strict vertical order (important for mobile UI).
         far_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน", key="far_binocular_ok")
-        far_va_be = st.selectbox(
-            "2) Acuity Both eyes (1–14)",
-            list(range(1, 15)),
-            index=_index_for(st.session_state["far_va_be"], list(range(1, 15)), 7),
-            format_func=lambda x: fmt_va(x),
-            key="far_va_be",
-        )
-        far_va_re = st.selectbox(
-            "3) Acuity Right eye (1–14)",
-            [None] + list(range(1, 15)),
-            index=_index_for(st.session_state["far_va_re"], [None] + list(range(1, 15)), 0),
-            format_func=lambda x: "-" if x is None else fmt_va(x),
-            key="far_va_re",
-        )
-        far_va_le = st.selectbox(
-            "4) Acuity Left eye (1–14)",
-            [None] + list(range(1, 15)),
-            index=_index_for(st.session_state["far_va_le"], [None] + list(range(1, 15)), 0),
-            format_func=lambda x: "-" if x is None else fmt_va(x),
-            key="far_va_le",
-        )
-        far_stereo = st.selectbox(
-            "5) Stereo depth (1–9)",
-            options=[None] + list(range(1, 10)),
-            index=_index_for(st.session_state["far_stereo"], [None] + list(range(1, 10)), 0),
-            format_func=lambda x: "?" if x is None else fmt_stereo(x),
-            key="far_stereo",
-        )
-        far_color_correct = st.number_input(
-            "6) Color correct (0–8)",
-            min_value=0,
-            max_value=8,
-            value=st.session_state["far_color_correct"],
-            key="far_color_correct",
-        )
+        # Apply exam-mode result before instantiating the VA widget.
+        if st.session_state.get("far_va_be_exam_apply_pending"):
+            st.session_state["far_va_be"] = int(st.session_state["far_va_be_exam_apply_pending"])
+            st.session_state["far_va_be_exam_apply_pending"] = None
+
+        st.markdown("2) Acuity Both eyes (1–14)")
+        va_be_col, exam_col = st.columns([0.8, 1.6])
+        with va_be_col:
+            far_va_be = st.selectbox(
+                "2) Acuity Both eyes (1–14)",
+                list(range(1, 15)),
+                index=_index_for(st.session_state["far_va_be"], list(range(1, 15)), 7),
+                format_func=lambda x: fmt_va(x),
+                key="far_va_be",
+                label_visibility="collapsed",
+            )
+
+        with exam_col:
+            with st.expander(
+                "Exam mode (Far VA Both eyes)",
+                expanded=st.session_state.get("far_va_be_exam_enabled", False),
+            ):
+                st.session_state["far_va_be_exam_enabled"] = True
+                key = FAR_VA_BE_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("far_va_be_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("far_va_be_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("far_va_be_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("far_va_be_exam_stopped", False))
+
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("✅ ถูก", key="far_va_be_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("❌ ผิด", key="far_va_be_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("↺ รีเซ็ต", key="far_va_be_exam_reset")
+
+                if reset_click:
+                    st.session_state["far_va_be_exam_slide"] = 1
+                    st.session_state["far_va_be_exam_wrong_streak"] = 0
+                    st.session_state["far_va_be_exam_last_passed"] = 0
+                    st.session_state["far_va_be_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["far_va_be_exam_last_passed"] = slide
+                    st.session_state["far_va_be_exam_wrong_streak"] = 0
+                    st.session_state["far_va_be_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["far_va_be_exam_wrong_streak"] = wrong_streak
+                    st.session_state["far_va_be_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["far_va_be_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("far_va_be_exam_stopped", False))
+                last_passed = int(st.session_state.get("far_va_be_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
+                if last_passed > 0:
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("ใช้ผลนี้เป็น VA Both eyes", key="far_va_be_exam_apply"):
+                        st.session_state["far_va_be_exam_apply_pending"] = last_passed
+                        st.rerun()
+
+        # Apply exam-mode result before instantiating the widget.
+        if st.session_state.get("far_va_re_exam_apply_pending"):
+            st.session_state["far_va_re"] = int(st.session_state["far_va_re_exam_apply_pending"])
+            st.session_state["far_va_re_exam_apply_pending"] = None
+
+        st.markdown("3) Acuity Right eye (1–14)")
+        va_re_col, exam_re_col = st.columns([0.8, 1.6])
+        with va_re_col:
+            far_va_re = st.selectbox(
+                "3) Acuity Right eye (1–14)",
+                [None] + list(range(1, 15)),
+                index=_index_for(st.session_state["far_va_re"], [None] + list(range(1, 15)), 0),
+                format_func=lambda x: "-" if x is None else fmt_va(x),
+                key="far_va_re",
+                label_visibility="collapsed",
+            )
+        with exam_re_col:
+            with st.expander(
+                "Exam mode (Far VA Right eye)",
+                expanded=st.session_state.get("far_va_re_exam_enabled", False),
+            ):
+                st.session_state["far_va_re_exam_enabled"] = True
+                key = FAR_VA_RE_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("far_va_re_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("far_va_re_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("far_va_re_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("far_va_re_exam_stopped", False))
+
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("✅ ถูก", key="far_va_re_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("❌ ผิด", key="far_va_re_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("↺ รีเซ็ต", key="far_va_re_exam_reset")
+
+                if reset_click:
+                    st.session_state["far_va_re_exam_slide"] = 1
+                    st.session_state["far_va_re_exam_wrong_streak"] = 0
+                    st.session_state["far_va_re_exam_last_passed"] = 0
+                    st.session_state["far_va_re_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["far_va_re_exam_last_passed"] = slide
+                    st.session_state["far_va_re_exam_wrong_streak"] = 0
+                    st.session_state["far_va_re_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["far_va_re_exam_wrong_streak"] = wrong_streak
+                    st.session_state["far_va_re_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["far_va_re_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("far_va_re_exam_stopped", False))
+                last_passed = int(st.session_state.get("far_va_re_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
+                if last_passed > 0:
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("ใช้ผลนี้", key="far_va_re_exam_apply"):
+                        st.session_state["far_va_re_exam_apply_pending"] = last_passed
+                        st.rerun()
+
+        # Apply exam-mode result before instantiating the widget.
+        if st.session_state.get("far_va_le_exam_apply_pending"):
+            st.session_state["far_va_le"] = int(st.session_state["far_va_le_exam_apply_pending"])
+            st.session_state["far_va_le_exam_apply_pending"] = None
+
+        st.markdown("4) Acuity Left eye (1–14)")
+        va_le_col, exam_le_col = st.columns([0.8, 1.6])
+        with va_le_col:
+            far_va_le = st.selectbox(
+                "4) Acuity Left eye (1–14)",
+                [None] + list(range(1, 15)),
+                index=_index_for(st.session_state["far_va_le"], [None] + list(range(1, 15)), 0),
+                format_func=lambda x: "-" if x is None else fmt_va(x),
+                key="far_va_le",
+                label_visibility="collapsed",
+            )
+        with exam_le_col:
+            with st.expander(
+                "Exam mode (Far VA Left eye)",
+                expanded=st.session_state.get("far_va_le_exam_enabled", False),
+            ):
+                st.session_state["far_va_le_exam_enabled"] = True
+                key = FAR_VA_LE_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("far_va_le_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("far_va_le_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("far_va_le_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("far_va_le_exam_stopped", False))
+
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("✅ ถูก", key="far_va_le_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("❌ ผิด", key="far_va_le_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("↺ รีเซ็ต", key="far_va_le_exam_reset")
+
+                if reset_click:
+                    st.session_state["far_va_le_exam_slide"] = 1
+                    st.session_state["far_va_le_exam_wrong_streak"] = 0
+                    st.session_state["far_va_le_exam_last_passed"] = 0
+                    st.session_state["far_va_le_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["far_va_le_exam_last_passed"] = slide
+                    st.session_state["far_va_le_exam_wrong_streak"] = 0
+                    st.session_state["far_va_le_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["far_va_le_exam_wrong_streak"] = wrong_streak
+                    st.session_state["far_va_le_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["far_va_le_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("far_va_le_exam_stopped", False))
+                last_passed = int(st.session_state.get("far_va_le_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
+                if last_passed > 0:
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("ใช้ผลนี้", key="far_va_le_exam_apply"):
+                        st.session_state["far_va_le_exam_apply_pending"] = last_passed
+                        st.rerun()
+
+        # Apply exam-mode result before instantiating the widget.
+        if st.session_state.get("far_stereo_exam_apply_pending"):
+            st.session_state["far_stereo"] = int(st.session_state["far_stereo_exam_apply_pending"])
+            st.session_state["far_stereo_exam_apply_pending"] = None
+
+        st.markdown("5) Stereo depth (1–9)")
+        stereo_col, stereo_exam_col = st.columns([0.8, 1.6])
+        with stereo_col:
+            far_stereo = st.selectbox(
+                "5) Stereo depth (1–9)",
+                options=[None] + list(range(1, 10)),
+                index=_index_for(st.session_state["far_stereo"], [None] + list(range(1, 10)), 0),
+                format_func=lambda x: "—" if x is None else fmt_stereo(x),
+                key="far_stereo",
+                label_visibility="collapsed",
+            )
+        with stereo_exam_col:
+            with st.expander(
+                "Exam mode (Far Stereo depth)",
+                expanded=st.session_state.get("far_stereo_exam_enabled", False),
+            ):
+                st.session_state["far_stereo_exam_enabled"] = True
+                key = FAR_STEREO_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("far_stereo_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("far_stereo_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("far_stereo_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("far_stereo_exam_stopped", False))
+
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("✅ ถูก", key="far_stereo_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("❌ ผิด", key="far_stereo_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("↺ รีเซ็ต", key="far_stereo_exam_reset")
+
+                if reset_click:
+                    st.session_state["far_stereo_exam_slide"] = 1
+                    st.session_state["far_stereo_exam_wrong_streak"] = 0
+                    st.session_state["far_stereo_exam_last_passed"] = 0
+                    st.session_state["far_stereo_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["far_stereo_exam_last_passed"] = slide
+                    st.session_state["far_stereo_exam_wrong_streak"] = 0
+                    st.session_state["far_stereo_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["far_stereo_exam_wrong_streak"] = wrong_streak
+                    st.session_state["far_stereo_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["far_stereo_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("far_stereo_exam_stopped", False))
+                last_passed = int(st.session_state.get("far_stereo_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
+                if last_passed > 0:
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_stereo(last_passed)}")
+                    if st.button("ใช้ผลนี้", key="far_stereo_exam_apply"):
+                        st.session_state["far_stereo_exam_apply_pending"] = last_passed
+                        st.rerun()
+
+        # Apply exam-mode result before instantiating the widget.
+        if st.session_state.get("far_color_exam_apply_pending"):
+            st.session_state["far_color_correct"] = int(st.session_state["far_color_exam_apply_pending"])
+            st.session_state["far_color_exam_apply_pending"] = None
+
+        st.markdown("6) Color correct (0–8)")
+        color_col, color_exam_col = st.columns([0.8, 1.6])
+        with color_col:
+            far_color_correct = st.number_input(
+                "6) Color correct (0–8)",
+                min_value=0,
+                max_value=8,
+                value=st.session_state["far_color_correct"],
+                key="far_color_correct",
+                label_visibility="collapsed",
+            )
+        with color_exam_col:
+            with st.expander(
+                "Exam mode (Far Color)",
+                expanded=st.session_state.get("far_color_exam_enabled", False),
+            ):
+                st.session_state["far_color_exam_enabled"] = True
+                key = FAR_COLOR_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("far_color_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("far_color_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("far_color_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("far_color_exam_stopped", False))
+
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption("หมายเหตุ: สไลด์ที่ 6 เฉลยเป็น x = คนตาปกติไม่ควรเห็นเลข")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("✅ ถูก", key="far_color_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("❌ ผิด", key="far_color_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("↺ รีเซ็ต", key="far_color_exam_reset")
+
+                if reset_click:
+                    st.session_state["far_color_exam_slide"] = 1
+                    st.session_state["far_color_exam_wrong_streak"] = 0
+                    st.session_state["far_color_exam_last_passed"] = 0
+                    st.session_state["far_color_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["far_color_exam_last_passed"] = slide
+                    st.session_state["far_color_exam_wrong_streak"] = 0
+                    st.session_state["far_color_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["far_color_exam_wrong_streak"] = wrong_streak
+                    st.session_state["far_color_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["far_color_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("far_color_exam_stopped", False))
+                last_passed = int(st.session_state.get("far_color_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
+                if last_passed > 0:
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed}")
+                    if st.button("ใช้ผลนี้ (จำนวนที่ผ่าน)", key="far_color_exam_apply"):
+                        st.session_state["far_color_exam_apply_pending"] = last_passed
+                        st.rerun()
+
         far_vphoria = st.selectbox(
             "7) Vertical phoria (1–7)",
             options=[None] + list(range(1, 8)),
