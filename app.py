@@ -425,7 +425,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
 def _set_default_state() -> None:
     defaults = {
         "job_key": list(JOB_GROUPS.keys())[0],
-        "test_device": "Titmus V2a / Optec 5000",
+        "test_device": "Titmus V2a",
         "far_correction": "ไม่ใส่แว่น",
         "near_correction": "ไม่ใส่แว่น",
         "include_intermediate": False,
@@ -708,9 +708,9 @@ def _firebase_label(doc) -> str:
 # UI
 # ----------------------------
 
-st.set_page_config(page_title="Vision Screening (Titmus V2a/Optec 5000)", layout="wide")
+st.set_page_config(page_title="Vision Screening (Titmus V2a)", layout="wide")
 
-st.title("แบบฟอร์มบันทึกผลตรวจสมรรถภาพการมองเห็น (Electronic) — Titmus V2a / Optec 5000")
+st.title("แบบฟอร์มบันทึกผลตรวจสมรรถภาพการมองเห็น (Electronic) — Titmus V2a")
 _set_default_state()
 if st.session_state.get("pending_payload") is not None:
     apply_payload_to_state(st.session_state["pending_payload"])
@@ -768,49 +768,49 @@ with left:
         # Keep Far vision fields in a strict vertical order (important for mobile UI).
         far_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน", key="far_binocular_ok")
         far_va_be = st.selectbox(
-            "2) Acuity Both eyes (1?14)",
+            "2) Acuity Both eyes (1–14)",
             list(range(1, 15)),
             index=_index_for(st.session_state["far_va_be"], list(range(1, 15)), 7),
             format_func=lambda x: fmt_va(x),
             key="far_va_be",
         )
         far_va_re = st.selectbox(
-            "3) Acuity Right eye (1?14)",
+            "3) Acuity Right eye (1–14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["far_va_re"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="far_va_re",
         )
         far_va_le = st.selectbox(
-            "4) Acuity Left eye (1?14)",
+            "4) Acuity Left eye (1–14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["far_va_le"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="far_va_le",
         )
         far_stereo = st.selectbox(
-            "5) Stereo depth (1?9)",
+            "5) Stereo depth (1–9)",
             options=[None] + list(range(1, 10)),
             index=_index_for(st.session_state["far_stereo"], [None] + list(range(1, 10)), 0),
             format_func=lambda x: "?" if x is None else fmt_stereo(x),
             key="far_stereo",
         )
         far_color_correct = st.number_input(
-            "6) Color correct (0?8)",
+            "6) Color correct (0–8)",
             min_value=0,
             max_value=8,
             value=st.session_state["far_color_correct"],
             key="far_color_correct",
         )
         far_vphoria = st.selectbox(
-            "7) Vertical phoria (1?7)",
+            "7) Vertical phoria (1–7)",
             options=[None] + list(range(1, 8)),
             index=_index_for(st.session_state["far_vphoria"], [None] + list(range(1, 8)), 0),
             format_func=lambda x: "?" if x is None else str(x),
             key="far_vphoria",
         )
         far_lphoria = st.selectbox(
-            "8) Lateral phoria (1?15)",
+            "8) Lateral phoria (1–15)",
             options=[None] + list(range(1, 16)),
             index=_index_for(st.session_state["far_lphoria"], [None] + list(range(1, 16)), 0),
             format_func=lambda x: "?" if x is None else str(x),
@@ -824,35 +824,35 @@ with left:
         # Keep Near vision fields in a strict vertical order (important for mobile UI).
         near_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน (Near)", key="near_binocular_ok")
         near_va_be = st.selectbox(
-            "2) Near Acuity Both eyes (1?14)",
+            "2) Near Acuity Both eyes (1–14)",
             list(range(1, 15)),
             index=_index_for(st.session_state["near_va_be"], list(range(1, 15)), 8),
             format_func=lambda x: fmt_va(x),
             key="near_va_be",
         )
         near_va_re = st.selectbox(
-            "3) Near Acuity Right eye (1?14)",
+            "3) Near Acuity Right eye (1–14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["near_va_re"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="near_va_re",
         )
         near_va_le = st.selectbox(
-            "4) Near Acuity Left eye (1?14)",
+            "4) Near Acuity Left eye (1–14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["near_va_le"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="near_va_le",
         )
         near_vphoria = st.selectbox(
-            "7) Near Vertical phoria (1?7)",
+            "7) Near Vertical phoria (1–7)",
             options=[None] + list(range(1, 8)),
             index=_index_for(st.session_state["near_vphoria"], [None] + list(range(1, 8)), 0),
             format_func=lambda x: "?" if x is None else str(x),
             key="near_vphoria",
         )
         near_lphoria = st.selectbox(
-            "8) Near Lateral phoria (1?15)",
+            "8) Near Lateral phoria (1–15)",
             options=[None] + list(range(1, 16)),
             index=_index_for(st.session_state["near_lphoria"], [None] + list(range(1, 16)), 0),
             format_func=lambda x: "?" if x is None else str(x),
@@ -1021,7 +1021,7 @@ with right:
     st.markdown("### สรุป")
     st.write(f"**กลุ่มอาชีพ:** {JOB_GROUPS[job_key]['label_th']}")
     st.write(f"**การแก้ไขสายตาขณะตรวจ:** Far = {far_correction} | Near = {near_correction}")
-    st.write(f"**ผลรวม:** {pass_fail_icon(all_ok)} (อิงเกณฑ์ V2a/Optec 5000 ของกลุ่มอาชีพนี้)")
+    st.write(f"**ผลรวม:** {pass_fail_icon(all_ok)} (อิงเกณฑ์ V2a ของกลุ่มอาชีพนี้)")
 
     # Quick save button directly under the summary.
     if st.button("บันทึกลง Firebase ตอนนี้"):
@@ -1246,7 +1246,7 @@ with right:
                 st.info("กรอก Service account และชื่อ collection เพื่อเริ่มใช้งาน")
 
     txt_lines = []
-    txt_lines.append("VISION SCREENING SUMMARY (Titmus V2a / Optec 5000)")
+    txt_lines.append("VISION SCREENING SUMMARY (Titmus V2a)")
     txt_lines.append(f"Date: {exam_date}")
     txt_lines.append(f"Name: {name} | HN: {hn} | Age: {age} | Gender: {gender}")
     txt_lines.append(f"Job group: {JOB_GROUPS[job_key]['label_th']}")
