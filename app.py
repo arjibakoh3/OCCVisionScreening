@@ -1310,11 +1310,11 @@ with left:
             st.session_state["near_va_re"] = int(st.session_state["near_va_re_exam_apply_pending"])
             st.session_state["near_va_re_exam_apply_pending"] = None
 
-        st.markdown("3) Near Acuity Right eye (1?14)")
+        st.markdown("3) Near Acuity Right eye (1–14)")
         near_va_re_col, near_re_exam_col = st.columns([0.8, 1.6])
         with near_va_re_col:
             near_va_re = st.selectbox(
-                "3) Near Acuity Right eye (1?14)",
+                "3) Near Acuity Right eye (1–14)",
                 [None] + list(range(1, 15)),
                 index=_index_for(st.session_state["near_va_re"], [None] + list(range(1, 15)), 0),
                 format_func=lambda x: "-" if x is None else fmt_va(x),
@@ -1335,17 +1335,17 @@ with left:
                 last_passed = int(st.session_state.get("near_va_re_exam_last_passed", 0) or 0)
                 stopped = bool(st.session_state.get("near_va_re_exam_stopped", False))
 
-                st.write(f"?????????????: **{slide} / {max_slide}**")
-                st.write(f"????: **{key[slide-1]}**")
-                st.caption(f"?????????: {wrong_streak}/2 | ??????????: {last_passed}")
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
 
                 c1, c2, c3 = st.columns(3)
                 with c1:
-                    correct_click = st.button("? ???", key="near_va_re_exam_correct", disabled=stopped)
+                    correct_click = st.button("✅ ถูก", key="near_va_re_exam_correct", disabled=stopped)
                 with c2:
-                    wrong_click = st.button("? ???", key="near_va_re_exam_wrong", disabled=stopped)
+                    wrong_click = st.button("❌ ผิด", key="near_va_re_exam_wrong", disabled=stopped)
                 with c3:
-                    reset_click = st.button("? ??????", key="near_va_re_exam_reset")
+                    reset_click = st.button("↺ รีเซ็ต", key="near_va_re_exam_reset")
 
                 if reset_click:
                     st.session_state["near_va_re_exam_slide"] = 1
@@ -1371,10 +1371,10 @@ with left:
                 stopped = bool(st.session_state.get("near_va_re_exam_stopped", False))
                 last_passed = int(st.session_state.get("near_va_re_exam_last_passed", 0) or 0)
                 if stopped:
-                    st.warning("???????????????????? (????????? 2 ?????)")
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
                 if last_passed > 0:
-                    st.success(f"????????????: ????? {last_passed} = {fmt_va(last_passed)}")
-                    if st.button("????????", key="near_va_re_exam_apply"):
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("ใช้ผลนี้", key="near_va_re_exam_apply"):
                         st.session_state["near_va_re_exam_apply_pending"] = last_passed
                         st.rerun()
 
@@ -1383,11 +1383,11 @@ with left:
             st.session_state["near_va_le"] = int(st.session_state["near_va_le_exam_apply_pending"])
             st.session_state["near_va_le_exam_apply_pending"] = None
 
-        st.markdown("4) Near Acuity Left eye (1?14)")
+        st.markdown("4) Near Acuity Left eye (1–14)")
         near_va_le_col, near_le_exam_col = st.columns([0.8, 1.6])
         with near_va_le_col:
             near_va_le = st.selectbox(
-                "4) Near Acuity Left eye (1?14)",
+                "4) Near Acuity Left eye (1–14)",
                 [None] + list(range(1, 15)),
                 index=_index_for(st.session_state["near_va_le"], [None] + list(range(1, 15)), 0),
                 format_func=lambda x: "-" if x is None else fmt_va(x),
@@ -1408,17 +1408,17 @@ with left:
                 last_passed = int(st.session_state.get("near_va_le_exam_last_passed", 0) or 0)
                 stopped = bool(st.session_state.get("near_va_le_exam_stopped", False))
 
-                st.write(f"?????????????: **{slide} / {max_slide}**")
-                st.write(f"????: **{key[slide-1]}**")
-                st.caption(f"?????????: {wrong_streak}/2 | ??????????: {last_passed}")
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
 
                 c1, c2, c3 = st.columns(3)
                 with c1:
-                    correct_click = st.button("? ???", key="near_va_le_exam_correct", disabled=stopped)
+                    correct_click = st.button("✅ ถูก", key="near_va_le_exam_correct", disabled=stopped)
                 with c2:
-                    wrong_click = st.button("? ???", key="near_va_le_exam_wrong", disabled=stopped)
+                    wrong_click = st.button("❌ ผิด", key="near_va_le_exam_wrong", disabled=stopped)
                 with c3:
-                    reset_click = st.button("? ??????", key="near_va_le_exam_reset")
+                    reset_click = st.button("↺ รีเซ็ต", key="near_va_le_exam_reset")
 
                 if reset_click:
                     st.session_state["near_va_le_exam_slide"] = 1
@@ -1444,10 +1444,10 @@ with left:
                 stopped = bool(st.session_state.get("near_va_le_exam_stopped", False))
                 last_passed = int(st.session_state.get("near_va_le_exam_last_passed", 0) or 0)
                 if stopped:
-                    st.warning("???????????????????? (????????? 2 ?????)")
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
                 if last_passed > 0:
-                    st.success(f"????????????: ????? {last_passed} = {fmt_va(last_passed)}")
-                    if st.button("????????", key="near_va_le_exam_apply"):
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("ใช้ผลนี้", key="near_va_le_exam_apply"):
                         st.session_state["near_va_le_exam_apply_pending"] = last_passed
                         st.rerun()
 
