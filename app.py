@@ -56,6 +56,24 @@ class Standards:
 
 
 JOB_GROUPS: Dict[str, Dict[str, Any]] = {
+    # 0) Unspecified
+    "unspecified": {
+        "label_th": "0) ??????? (Unspecified / Unknown job group)",
+        # Use all N/A thresholds so we can still save and review the case.
+        "std": Standards(
+            far_binocular_required=False,
+            far_va_be_min=None, far_va_re_min=None, far_va_le_min=None,
+            far_stereo_min=None,
+            far_color_min_correct=None,
+            far_vphoria_range=None,
+            far_lphoria_range=None,
+            near_binocular_required=False,
+            near_va_be_min=None, near_va_re_min=None, near_va_le_min=None,
+            near_vphoria_range=None,
+            near_lphoria_range=None,
+            inter_va_be_min=None, inter_va_re_min=None, inter_va_le_min=None,
+        ),
+    },
     # 1) Office
     "office": {
         "label_th": "1) สำนักงาน (Office) — Clerical & Administrative",
@@ -354,6 +372,15 @@ def build_form_html(payload: Dict[str, Any]) -> str:
         <div class="small">
           {"<br>".join(auto["recommendations"]) if auto["recommendations"] else "-"}
         </div>
+        <div class="section-title">Physician note</div>
+        <div class="small">
+          {review.get("physician_note","") or "&nbsp;"}
+        </div>
+        <div style="height: 1.2em;"></div>
+        <div class="row" style="justify-content: flex-end; text-align: right;">
+          Physician signature <span class="line" style="min-width: 220px;">&nbsp;</span>
+        </div>
+        <div class="small right">(นายแพทย์ แบงก์ชาติ จินตรัตน์ ว. 50587)</div>
       </div>
       <div class="box">
         <div class="section-title">Results (measured + reference)</div>
@@ -384,9 +411,6 @@ def build_form_html(payload: Dict[str, Any]) -> str:
           ]) if inter else ""}
           <tr><td>Visual field</td><td>{vf_value}</td><td>Screening / clinician judgment</td></tr>
         </table>
-        <div class="row" style="margin-top:6px;">
-          Physician note <span class="line" style="min-width: 180px;">{review.get("physician_note","")}</span>
-        </div>
       </div>
     </div>
 
@@ -643,6 +667,10 @@ def _firebase_list_records(db, collection: str, limit: int = 50):
     return [doc for doc in query.stream()]
 
 
+def _firebase_delete_record(db, collection: str, doc_id: str) -> None:
+    db.collection(collection).document(doc_id).delete()
+
+
 def _match_keyword(doc, keyword: str) -> bool:
     if not keyword:
         return True
@@ -651,6 +679,18 @@ def _match_keyword(doc, keyword: str) -> bool:
     name = str(person.get("name", "")).lower()
     hn = str(person.get("hn", "")).lower()
     return keyword.lower() in name or keyword.lower() in hn
+
+
+def _match_exam_date(doc, exam_date_filter: Optional[Any]) -> bool:
+    if exam_date_filter is None:
+        return True
+    data = doc.to_dict() or {}
+    meta = data.get("meta", {})
+    exam_date_str = str(meta.get("exam_date", "") or "")
+    if not exam_date_str:
+        return False
+    # Stored as ISO date string (YYYY-MM-DD)
+    return exam_date_str == str(exam_date_filter)
 
 
 def _firebase_label(doc) -> str:
@@ -996,8 +1036,9 @@ with right:
 
     st.markdown("### ส่วนแพทย์ตรวจทาน (Physician review)")
     physician_note = st.text_area("แพทย์ตรวจทาน/ข้อสังเกตเพิ่มเติม", value=st.session_state["physician_note"], height=100, key="physician_note")
-    physician_name = st.text_input("ชื่อแพทย์ผู้แปลผล", value=st.session_state["physician_name"], key="physician_name")
-    tech_name = st.text_input("ชื่อผู้ตรวจ (Technician)", value=st.session_state["tech_name"], key="tech_name")
+    # Hide physician/technician name fields; keep payload shape stable.
+    physician_name = ""
+    tech_name = ""
 
     # Build export payload
     payload = {
@@ -1101,6 +1142,8 @@ with right:
             fb_auto = st.checkbox("เปิด Auto refresh รายการเคส", value=st.session_state["firebase_autorefresh"], key="firebase_autorefresh")
             fb_autosave = st.checkbox("Auto update เมื่อแก้ฟอร์ม (ต้องโหลดเคสก่อน)", value=st.session_state["firebase_autosave"], key="firebase_autosave")
             fb_search = st.text_input("ค้นหา (HN/ชื่อ)", value="")
+            fb_use_date_filter = st.checkbox("กรองตามวันที่ตรวจ", value=False)
+            fb_exam_date_filter = st.date_input("วันที่ตรวจ", value=datetime.today(), disabled=not fb_use_date_filter)
 
             fb_info = None
             if secrets_fb is not None:
@@ -1128,7 +1171,11 @@ with right:
                             _firebase_update_record(db, fb_collection, st.session_state["firebase_doc_id"], payload)
                             st.session_state["firebase_last_hash"] = current_hash
                     records = _firebase_list_records(db, fb_collection, limit=50)
-                    records = [doc for doc in records if _match_keyword(doc, fb_search)]
+                    exam_date_filter = fb_exam_date_filter if fb_use_date_filter else None
+                    records = [
+                        doc for doc in records
+                        if _match_keyword(doc, fb_search) and _match_exam_date(doc, exam_date_filter)
+                    ]
                     if records:
                         labels = [_firebase_label(doc) for doc in records]
                         sel = st.selectbox("เลือกเคสเพื่อโหลดเข้าแอป", options=list(range(len(records))), format_func=lambda i: labels[i])
@@ -1136,17 +1183,37 @@ with right:
                         sel = None
                         st.info("ยังไม่มีข้อมูลใน collection นี้")
 
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        if records and st.button("โหลดเคสที่เลือก"):
-                            st.session_state["pending_payload"] = records[sel].to_dict() or {}
-                            st.session_state["firebase_doc_id"] = records[sel].id
-                            st.session_state["firebase_last_hash"] = ""
-                            st.rerun()
-                    with col_b:
+                    col_save, _ = st.columns([1, 1])
+                    with col_save:
                         if st.button("บันทึกเคสนี้ขึ้น Firebase"):
                             _firebase_save_record(db, fb_collection, payload)
                             st.success("บันทึกสำเร็จ")
+
+                    # Row-level actions: load/delete per record
+                    if records:
+                        st.caption("จัดการทีละเคส")
+                        for doc in records:
+                            data = doc.to_dict() or {}
+                            person = data.get("person", {})
+                            meta = data.get("meta", {})
+                            label = f"{person.get('name','')} | HN:{person.get('hn','')} | {meta.get('exam_date','')}"
+                            row_a, row_b, row_c = st.columns([6, 2, 2])
+                            with row_a:
+                                st.write(label)
+                            with row_b:
+                                if st.button("โหลด", key=f"fb_load_{doc.id}"):
+                                    st.session_state["pending_payload"] = data
+                                    st.session_state["firebase_doc_id"] = doc.id
+                                    st.session_state["firebase_last_hash"] = ""
+                                    st.rerun()
+                            with row_c:
+                                if st.button("ลบ", key=f"fb_del_{doc.id}"):
+                                    _firebase_delete_record(db, fb_collection, doc.id)
+                                    if st.session_state.get("firebase_doc_id") == doc.id:
+                                        st.session_state["firebase_doc_id"] = ""
+                                        st.session_state["firebase_last_hash"] = ""
+                                    st.success("ลบเคสแล้ว")
+                                    st.rerun()
                 except Exception as e:
                     st.error(f"เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
                     try:
@@ -1192,9 +1259,6 @@ with right:
         txt_lines.append("")
         txt_lines.append("Physician review note:")
         txt_lines.append(physician_note.strip())
-    txt_lines.append("")
-    txt_lines.append(f"Technician: {tech_name}")
-    txt_lines.append(f"Physician: {physician_name}")
 
     summary_txt = "\n".join(txt_lines)
     st.download_button("ดาวน์โหลดสรุป (TXT)", data=summary_txt.encode("utf-8"),
