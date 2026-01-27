@@ -535,13 +535,24 @@ def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(info)
     pk = normalized.get("private_key")
     if isinstance(pk, str):
-        # Common issue in TOML/env vars: newline characters are escaped as "\n".
-        pk_fixed = pk.replace("\\n", "\n").strip()
+        # Common issues in TOML/env vars: newline characters are escaped as "\n" or "\r\n".
+        pk_fixed = pk.strip()
+        pk_fixed = pk_fixed.replace("\\r\\n", "\n").replace("\\n", "\n")
+        pk_fixed = pk_fixed.replace("\r\n", "\n").replace("\r", "\n")
         # In some cases the key is wrapped in quotes.
         if (pk_fixed.startswith('"') and pk_fixed.endswith('"')) or (
             pk_fixed.startswith("'") and pk_fixed.endswith("'")
         ):
             pk_fixed = pk_fixed[1:-1]
+        # Ensure proper PEM framing with line breaks after header/footer.
+        header = "-----BEGIN PRIVATE KEY-----"
+        footer = "-----END PRIVATE KEY-----"
+        if header in pk_fixed and footer in pk_fixed:
+            pk_fixed = pk_fixed.replace(header, header + "\n")
+            pk_fixed = pk_fixed.replace(footer, "\n" + footer)
+            # Collapse multiple blank lines that can appear after replacements.
+            while "\n\n\n" in pk_fixed:
+                pk_fixed = pk_fixed.replace("\n\n\n", "\n\n")
         normalized["private_key"] = pk_fixed
     return normalized
 
