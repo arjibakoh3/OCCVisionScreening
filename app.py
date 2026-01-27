@@ -346,28 +346,32 @@ def build_form_html(payload: Dict[str, Any]) -> str:
 
     <div class="grid">
       <div class="box">
-        <div class="section-title">กลุ่มอาชีพ (Job groups)</div>
+        <div class="section-title">Job groups</div>
         <div class="small">{meta["job_group_label"]}</div>
-        <div class="section-title">ทดสอบด้วยเครื่อง (Device)</div>
+        <div class="section-title">Device</div>
         <div class="small">{meta["device"]}</div>
+        <div class="section-title">Recommendation</div>
+        <div class="small">
+          {"<br>".join(auto["recommendations"]) if auto["recommendations"] else "-"}
+        </div>
       </div>
       <div class="box">
-        <div class="section-title">ผลการตรวจ (ค่าที่ได้ + ค่าอ้างอิง)</div>
+        <div class="section-title">Results (measured + reference)</div>
         <table>
           <tr>
-            <th style="width:38%;">หัวข้อ</th>
-            <th style="width:32%;">ค่าที่ได้</th>
-            <th style="width:30%;">ค่าอ้างอิง (ตามกลุ่มอาชีพ)</th>
+            <th style="width:38%;">Item</th>
+            <th style="width:32%;">Measured</th>
+            <th style="width:30%;">Reference (by job group)</th>
           </tr>
-          <tr><td>Far: Binocular (3 cubes)</td><td>{"ผ่าน" if inputs["far"]["binocular_ok"] else "ไม่ผ่าน"}</td><td>ต้องผ่าน 3 cubes</td></tr>
+          <tr><td>Far: Binocular (3 cubes)</td><td>{"PASS" if inputs["far"]["binocular_ok"] else "FAIL"}</td><td>Must pass 3 cubes</td></tr>
           <tr><td>Far: VA Both eyes</td><td>{val_va(inputs["far"]["va_be"])}</td><td>{ref_min(std.far_va_be_min, fmt_va)}</td></tr>
           <tr><td>Far: VA Right</td><td>{val_va(inputs["far"]["va_re"])}</td><td>{ref_min(std.far_va_re_min, fmt_va)}</td></tr>
           <tr><td>Far: VA Left</td><td>{val_va(inputs["far"]["va_le"])}</td><td>{ref_min(std.far_va_le_min, fmt_va)}</td></tr>
-          <tr><td>Far: Stereo depth</td><td>{fmt_stereo(inputs["far"]["stereo"]) if inputs["far"]["stereo"] is not None else "—"}</td><td>{ref_min(std.far_stereo_min, fmt_stereo)}</td></tr>
+          <tr><td>Far: Stereo depth</td><td>{fmt_stereo(inputs["far"]["stereo"]) if inputs["far"]["stereo"] is not None else "-"}</td><td>{ref_min(std.far_stereo_min, fmt_stereo)}</td></tr>
           <tr><td>Far: Color discrimination</td><td>{inputs["far"]["color_correct"]}/8</td><td>{ref_min(std.far_color_min_correct, lambda v: f"{v}/8")}</td></tr>
           <tr><td>Far: Vertical phoria</td><td>{val_num(inputs["far"]["vphoria"])}</td><td>{ref_range(std.far_vphoria_range)}</td></tr>
           <tr><td>Far: Lateral phoria</td><td>{val_num(inputs["far"]["lphoria"])}</td><td>{ref_range(std.far_lphoria_range)}</td></tr>
-          <tr><td>Near: Binocular (3 cubes)</td><td>{"ผ่าน" if inputs["near"]["binocular_ok"] else "ไม่ผ่าน"}</td><td>ต้องผ่าน 3 cubes</td></tr>
+          <tr><td>Near: Binocular (3 cubes)</td><td>{"PASS" if inputs["near"]["binocular_ok"] else "FAIL"}</td><td>Must pass 3 cubes</td></tr>
           <tr><td>Near: VA Both eyes</td><td>{val_va(inputs["near"]["va_be"])}</td><td>{ref_min(std.near_va_be_min, fmt_va)}</td></tr>
           <tr><td>Near: VA Right</td><td>{val_va(inputs["near"]["va_re"])}</td><td>{ref_min(std.near_va_re_min, fmt_va)}</td></tr>
           <tr><td>Near: VA Left</td><td>{val_va(inputs["near"]["va_le"])}</td><td>{ref_min(std.near_va_le_min, fmt_va)}</td></tr>
@@ -378,24 +382,21 @@ def build_form_html(payload: Dict[str, Any]) -> str:
               f'<tr><td>Inter: VA Right</td><td>{val_va(inter.get("va_re"))}</td><td>{ref_min(std.inter_va_re_min, fmt_va)}</td></tr>',
               f'<tr><td>Inter: VA Left</td><td>{val_va(inter.get("va_le"))}</td><td>{ref_min(std.inter_va_le_min, fmt_va)}</td></tr>',
           ]) if inter else ""}
-          <tr><td>Visual field</td><td>{vf_value}</td><td>คัดกรอง/ตามดุลยพินิจแพทย์</td></tr>
+          <tr><td>Visual field</td><td>{vf_value}</td><td>Screening / clinician judgment</td></tr>
         </table>
         <div class="row" style="margin-top:6px;">
-          หมายเหตุแพทย์ <span class="line" style="min-width: 180px;">{review.get("physician_note","")}</span>
+          Physician note <span class="line" style="min-width: 180px;">{review.get("physician_note","")}</span>
         </div>
       </div>
     </div>
 
     <div class="box">
-      <div class="section-title">คำแนะนำ (Recommendation)</div>
-      <div class="small">
-        {"<br>".join(auto["recommendations"]) if auto["recommendations"] else "-"}
-      </div>
       <div class="row" style="margin-top:6px;">
-        ผู้ตรวจ (Technician) <span class="line" style="min-width: 160px;">{review.get("technician","")}</span>
-        แพทย์ผู้แปลผล (Physician) <span class="line" style="min-width: 160px;">{review.get("physician","")}</span>
+        Technician <span class="line" style="min-width: 160px;">{review.get("technician","")}</span>
+        Physician <span class="line" style="min-width: 160px;">{review.get("physician","")}</span>
       </div>
     </div>
+
   </div>
 </body>
 </html>"""
