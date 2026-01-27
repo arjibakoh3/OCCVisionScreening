@@ -390,13 +390,6 @@ def build_form_html(payload: Dict[str, Any]) -> str:
       </div>
     </div>
 
-    <div class="box">
-      <div class="row" style="margin-top:6px;">
-        Technician <span class="line" style="min-width: 160px;">{review.get("technician","")}</span>
-        Physician <span class="line" style="min-width: 160px;">{review.get("physician","")}</span>
-      </div>
-    </div>
-
   </div>
 </body>
 </html>"""
