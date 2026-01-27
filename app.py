@@ -556,6 +556,11 @@ def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
         # Ensure proper PEM framing with line breaks after header/footer.
         header = "-----BEGIN PRIVATE KEY-----"
         footer = "-----END PRIVATE KEY-----"
+        # If only one PEM boundary exists, add the missing one.
+        if footer in pk_fixed and header not in pk_fixed:
+            pk_fixed = f"{header}\n{pk_fixed}"
+        if header in pk_fixed and footer not in pk_fixed:
+            pk_fixed = f"{pk_fixed}\n{footer}"
         if header not in pk_fixed and footer not in pk_fixed:
             # If the content looks like key material but is missing framing, wrap it.
             # This is a best-effort fallback and won't fix truly invalid keys.
