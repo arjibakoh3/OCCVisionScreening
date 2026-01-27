@@ -1,18 +1,9 @@
 import json
-import io
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
 import streamlit as st
-
-try:
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
-    GOOGLE_DRIVE_AVAILABLE = True
-except Exception:
-    GOOGLE_DRIVE_AVAILABLE = False
 
 try:
     import firebase_admin
@@ -411,7 +402,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
 
 
 # ----------------------------
-# State helpers + Cloud (Google Drive)
+# State helpers + Cloud (Firebase)
 # ----------------------------
 
 def _set_default_state() -> None:
@@ -452,9 +443,6 @@ def _set_default_state() -> None:
         "physician_note": "",
         "physician_name": "",
         "tech_name": "",
-        "gdrive_folder_id": "",
-        "gdrive_refresh_sec": 10,
-        "gdrive_autorefresh": True,
         "firebase_collection": "vision_records",
         "firebase_refresh_sec": 10,
         "firebase_autorefresh": True,
@@ -540,42 +528,6 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     st.session_state["physician_note"] = review.get("physician_note", "")
     st.session_state["physician_name"] = review.get("physician", "")
     st.session_state["tech_name"] = review.get("technician", "")
-
-
-def _drive_service_from_info(info: Dict[str, Any]):
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/drive"]
-    )
-    return build("drive", "v3", credentials=creds, cache_discovery=False)
-
-
-def _drive_list_files(service, folder_id: str) -> List[Dict[str, Any]]:
-    q = f"'{folder_id}' in parents and trashed=false"
-    res = service.files().list(
-        q=q,
-        fields="files(id,name,modifiedTime,size,mimeType)",
-        orderBy="modifiedTime desc",
-        pageSize=50,
-    ).execute()
-    return res.get("files", [])
-
-
-def _drive_download_json(service, file_id: str) -> Dict[str, Any]:
-    request = service.files().get_media(fileId=file_id)
-    fh = io.BytesIO()
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    fh.seek(0)
-    return json.loads(fh.read().decode("utf-8"))
-
-
-def _drive_upload_json(service, folder_id: str, name: str, payload: Dict[str, Any]) -> None:
-    metadata = {"name": name, "parents": [folder_id]}
-    data = io.BytesIO(json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8"))
-    media = MediaIoBaseUpload(data, mimetype="application/json")
-    service.files().create(body=metadata, media_body=media, fields="id").execute()
 
 
 def _firebase_client_from_info(info: Dict[str, Any]):
@@ -1101,66 +1053,6 @@ with right:
                     st.error(f"เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
             else:
                 st.info("กรอก Service account และชื่อ collection เพื่อเริ่มใช้งาน")
-
-    with st.expander("Cloud Sync (Google Drive)", expanded=False):
-        st.caption("อัปโหลด/ดึงไฟล์จากโฟลเดอร์กลางเพื่อทำงานร่วมกันแบบใกล้เรียลไทม์")
-        if not GOOGLE_DRIVE_AVAILABLE:
-            st.warning("ยังไม่มีไลบรารี Google Drive API ในเครื่องนี้ (google-api-python-client).")
-        else:
-            secrets_gd = None
-            if st.secrets and "gdrive" in st.secrets:
-                try:
-                    secrets_gd = json.loads(st.secrets["gdrive"]["service_account_json"])
-                    if not st.session_state.get("gdrive_folder_id"):
-                        st.session_state["gdrive_folder_id"] = st.secrets["gdrive"].get("folder_id", "")
-                except Exception:
-                    secrets_gd = None
-            sa_file = st.file_uploader("Service account JSON", type=["json"])
-            sa_text = st.text_area("หรือวาง JSON ของ Service account ที่นี่", value="", height=120)
-            folder_id = st.text_input("Google Drive Folder ID", key="gdrive_folder_id")
-            refresh_sec = st.number_input("รีเฟรชรายการทุก (วินาที)", min_value=5, max_value=60, value=st.session_state["gdrive_refresh_sec"], key="gdrive_refresh_sec")
-            auto_refresh = st.checkbox("เปิด Auto refresh รายการไฟล์", value=st.session_state["gdrive_autorefresh"], key="gdrive_autorefresh")
-
-            info = None
-            if secrets_gd is not None:
-                info = secrets_gd
-            elif sa_file is not None:
-                try:
-                    info = json.load(sa_file)
-                except Exception:
-                    st.error("อ่านไฟล์ Service account ไม่ได้")
-            elif sa_text.strip():
-                try:
-                    info = json.loads(sa_text)
-                except Exception:
-                    st.error("JSON ไม่ถูกต้อง")
-
-            if info and folder_id:
-                try:
-                    service = _drive_service_from_info(info)
-                    if auto_refresh and hasattr(st, "autorefresh"):
-                        st.autorefresh(interval=int(refresh_sec * 1000), key="gdrive_autorefresh_tick")
-                    files = _drive_list_files(service, folder_id)
-                    if files:
-                        file_labels = [f"{f['name']} | {f.get('modifiedTime','')}" for f in files]
-                        sel = st.selectbox("เลือกไฟล์เพื่อโหลดเข้าแอป", options=list(range(len(files))), format_func=lambda i: file_labels[i])
-                        col_a, col_b = st.columns(2)
-                        with col_a:
-                            if st.button("โหลดไฟล์ที่เลือก"):
-                                payload_in = _drive_download_json(service, files[sel]["id"])
-                                st.session_state["pending_payload"] = payload_in
-                                st.rerun()
-                        with col_b:
-                            if st.button("อัปโหลดบันทึกนี้ขึ้นโฟลเดอร์"):
-                                filename = f"vision_{hn or 'no_hn'}_{exam_date}.json"
-                                _drive_upload_json(service, folder_id, filename, payload)
-                                st.success("อัปโหลดสำเร็จ")
-                    else:
-                        st.info("ยังไม่มีไฟล์ในโฟลเดอร์นี้")
-                except Exception as e:
-                    st.error(f"เชื่อมต่อ Google Drive ไม่สำเร็จ: {e}")
-            else:
-                st.info("กรอก Service account และ Folder ID เพื่อเริ่มใช้งาน")
 
     txt_lines = []
     txt_lines.append("VISION SCREENING SUMMARY (Titmus V2a / Optec 5000)")
