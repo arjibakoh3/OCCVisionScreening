@@ -182,6 +182,11 @@ FAR_VA_BE_KEY: List[str] = [
     "T", "R", "R", "L", "T", "B", "L", "R", "L", "B", "R", "B", "T", "R"
 ]
 
+NEAR_VA_BE_KEY: List[str] = ["T","R","R","L","T","B","L","R","L","B","R","B","T","R"]
+
+NEAR_VA_RE_KEY: List[str] = ["T","L","T","T","B","B","L","B","R","T","R","L","B","R"]
+NEAR_VA_LE_KEY: List[str] = ["L","R","L","B","R","T","T","B","R","T","B","R","T","L"]
+
 FAR_VA_RE_KEY: List[str] = [
     "T","L","T","T","B","B","L","B","R","T","R","L","B","R"
 ]
@@ -495,8 +500,29 @@ def _set_default_state() -> None:
         "far_lphoria": None,
         "near_binocular_ok": True,
         "near_va_be": 9,
+        "near_va_be_exam_enabled": False,
+        "near_va_be_exam_slide": 1,
+        "near_va_be_exam_wrong_streak": 0,
+        "near_va_be_exam_last_passed": 0,
+        "near_va_be_exam_stopped": False,
+        "near_va_be_exam_apply_pending": None,
+
         "near_va_re": None,
+        "near_va_re_exam_enabled": False,
+        "near_va_re_exam_slide": 1,
+        "near_va_re_exam_wrong_streak": 0,
+        "near_va_re_exam_last_passed": 0,
+        "near_va_re_exam_stopped": False,
+        "near_va_re_exam_apply_pending": None,
+
         "near_va_le": None,
+        "near_va_le_exam_enabled": False,
+        "near_va_le_exam_slide": 1,
+        "near_va_le_exam_wrong_streak": 0,
+        "near_va_le_exam_last_passed": 0,
+        "near_va_le_exam_stopped": False,
+        "near_va_le_exam_apply_pending": None,
+
         "near_vphoria": None,
         "near_lphoria": None,
         "inter_va_be": None,
@@ -1205,27 +1231,226 @@ with left:
 
         # Keep Near vision fields in a strict vertical order (important for mobile UI).
         near_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน (Near)", key="near_binocular_ok")
-        near_va_be = st.selectbox(
-            "2) Near Acuity Both eyes (1–14)",
-            list(range(1, 15)),
-            index=_index_for(st.session_state["near_va_be"], list(range(1, 15)), 8),
-            format_func=lambda x: fmt_va(x),
-            key="near_va_be",
-        )
-        near_va_re = st.selectbox(
-            "3) Near Acuity Right eye (1–14)",
-            [None] + list(range(1, 15)),
-            index=_index_for(st.session_state["near_va_re"], [None] + list(range(1, 15)), 0),
-            format_func=lambda x: "-" if x is None else fmt_va(x),
-            key="near_va_re",
-        )
-        near_va_le = st.selectbox(
-            "4) Near Acuity Left eye (1–14)",
-            [None] + list(range(1, 15)),
-            index=_index_for(st.session_state["near_va_le"], [None] + list(range(1, 15)), 0),
-            format_func=lambda x: "-" if x is None else fmt_va(x),
-            key="near_va_le",
-        )
+
+        # Apply exam-mode result before instantiating the VA widget.
+        if st.session_state.get("near_va_be_exam_apply_pending"):
+            st.session_state["near_va_be"] = int(st.session_state["near_va_be_exam_apply_pending"])
+            st.session_state["near_va_be_exam_apply_pending"] = None
+
+        st.markdown("2) Near Acuity Both eyes (1–14)")
+        near_va_be_col, near_exam_col = st.columns([0.8, 1.6])
+        with near_va_be_col:
+            near_va_be = st.selectbox(
+                "2) Near Acuity Both eyes (1–14)",
+                list(range(1, 15)),
+                index=_index_for(st.session_state["near_va_be"], list(range(1, 15)), 8),
+                format_func=lambda x: fmt_va(x),
+                key="near_va_be",
+                label_visibility="collapsed",
+            )
+        with near_exam_col:
+            with st.expander(
+                "Exam mode (Near VA Both eyes)",
+                expanded=st.session_state.get("near_va_be_exam_enabled", False),
+            ):
+                st.session_state["near_va_be_exam_enabled"] = True
+                key = NEAR_VA_BE_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("near_va_be_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("near_va_be_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("near_va_be_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("near_va_be_exam_stopped", False))
+
+                st.write(f"สไลด์ปัจจุบัน: **{slide} / {max_slide}**")
+                st.write(f"เฉลย: **{key[slide-1]}**")
+                st.caption(f"ผิดติดกัน: {wrong_streak}/2 | ผ่านล่าสุด: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("✅ ถูก", key="near_va_be_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("❌ ผิด", key="near_va_be_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("↺ รีเซ็ต", key="near_va_be_exam_reset")
+
+                if reset_click:
+                    st.session_state["near_va_be_exam_slide"] = 1
+                    st.session_state["near_va_be_exam_wrong_streak"] = 0
+                    st.session_state["near_va_be_exam_last_passed"] = 0
+                    st.session_state["near_va_be_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["near_va_be_exam_last_passed"] = slide
+                    st.session_state["near_va_be_exam_wrong_streak"] = 0
+                    st.session_state["near_va_be_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["near_va_be_exam_wrong_streak"] = wrong_streak
+                    st.session_state["near_va_be_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["near_va_be_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("near_va_be_exam_stopped", False))
+                last_passed = int(st.session_state.get("near_va_be_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("หยุดการตรวจอัตโนมัติ (ผิดติดกัน 2 ครั้ง)")
+                if last_passed > 0:
+                    st.success(f"ผลที่อ่านได้: สไลด์ {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("ใช้ผลนี้เป็น Near VA Both eyes", key="near_va_be_exam_apply"):
+                        st.session_state["near_va_be_exam_apply_pending"] = last_passed
+                        st.rerun()
+
+        # Apply exam-mode result before instantiating the widget.
+        if st.session_state.get("near_va_re_exam_apply_pending"):
+            st.session_state["near_va_re"] = int(st.session_state["near_va_re_exam_apply_pending"])
+            st.session_state["near_va_re_exam_apply_pending"] = None
+
+        st.markdown("3) Near Acuity Right eye (1?14)")
+        near_va_re_col, near_re_exam_col = st.columns([0.8, 1.6])
+        with near_va_re_col:
+            near_va_re = st.selectbox(
+                "3) Near Acuity Right eye (1?14)",
+                [None] + list(range(1, 15)),
+                index=_index_for(st.session_state["near_va_re"], [None] + list(range(1, 15)), 0),
+                format_func=lambda x: "-" if x is None else fmt_va(x),
+                key="near_va_re",
+                label_visibility="collapsed",
+            )
+        with near_re_exam_col:
+            with st.expander(
+                "Exam mode (Near VA Right eye)",
+                expanded=st.session_state.get("near_va_re_exam_enabled", False),
+            ):
+                st.session_state["near_va_re_exam_enabled"] = True
+                key = NEAR_VA_RE_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("near_va_re_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("near_va_re_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("near_va_re_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("near_va_re_exam_stopped", False))
+
+                st.write(f"?????????????: **{slide} / {max_slide}**")
+                st.write(f"????: **{key[slide-1]}**")
+                st.caption(f"?????????: {wrong_streak}/2 | ??????????: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("? ???", key="near_va_re_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("? ???", key="near_va_re_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("? ??????", key="near_va_re_exam_reset")
+
+                if reset_click:
+                    st.session_state["near_va_re_exam_slide"] = 1
+                    st.session_state["near_va_re_exam_wrong_streak"] = 0
+                    st.session_state["near_va_re_exam_last_passed"] = 0
+                    st.session_state["near_va_re_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["near_va_re_exam_last_passed"] = slide
+                    st.session_state["near_va_re_exam_wrong_streak"] = 0
+                    st.session_state["near_va_re_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["near_va_re_exam_wrong_streak"] = wrong_streak
+                    st.session_state["near_va_re_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["near_va_re_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("near_va_re_exam_stopped", False))
+                last_passed = int(st.session_state.get("near_va_re_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("???????????????????? (????????? 2 ?????)")
+                if last_passed > 0:
+                    st.success(f"????????????: ????? {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("????????", key="near_va_re_exam_apply"):
+                        st.session_state["near_va_re_exam_apply_pending"] = last_passed
+                        st.rerun()
+
+        # Apply exam-mode result before instantiating the widget.
+        if st.session_state.get("near_va_le_exam_apply_pending"):
+            st.session_state["near_va_le"] = int(st.session_state["near_va_le_exam_apply_pending"])
+            st.session_state["near_va_le_exam_apply_pending"] = None
+
+        st.markdown("4) Near Acuity Left eye (1?14)")
+        near_va_le_col, near_le_exam_col = st.columns([0.8, 1.6])
+        with near_va_le_col:
+            near_va_le = st.selectbox(
+                "4) Near Acuity Left eye (1?14)",
+                [None] + list(range(1, 15)),
+                index=_index_for(st.session_state["near_va_le"], [None] + list(range(1, 15)), 0),
+                format_func=lambda x: "-" if x is None else fmt_va(x),
+                key="near_va_le",
+                label_visibility="collapsed",
+            )
+        with near_le_exam_col:
+            with st.expander(
+                "Exam mode (Near VA Left eye)",
+                expanded=st.session_state.get("near_va_le_exam_enabled", False),
+            ):
+                st.session_state["near_va_le_exam_enabled"] = True
+                key = NEAR_VA_LE_KEY
+                max_slide = len(key)
+                slide = int(st.session_state.get("near_va_le_exam_slide", 1) or 1)
+                slide = min(max(slide, 1), max_slide)
+                wrong_streak = int(st.session_state.get("near_va_le_exam_wrong_streak", 0) or 0)
+                last_passed = int(st.session_state.get("near_va_le_exam_last_passed", 0) or 0)
+                stopped = bool(st.session_state.get("near_va_le_exam_stopped", False))
+
+                st.write(f"?????????????: **{slide} / {max_slide}**")
+                st.write(f"????: **{key[slide-1]}**")
+                st.caption(f"?????????: {wrong_streak}/2 | ??????????: {last_passed}")
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    correct_click = st.button("? ???", key="near_va_le_exam_correct", disabled=stopped)
+                with c2:
+                    wrong_click = st.button("? ???", key="near_va_le_exam_wrong", disabled=stopped)
+                with c3:
+                    reset_click = st.button("? ??????", key="near_va_le_exam_reset")
+
+                if reset_click:
+                    st.session_state["near_va_le_exam_slide"] = 1
+                    st.session_state["near_va_le_exam_wrong_streak"] = 0
+                    st.session_state["near_va_le_exam_last_passed"] = 0
+                    st.session_state["near_va_le_exam_stopped"] = False
+                    st.rerun()
+
+                if correct_click and not stopped:
+                    st.session_state["near_va_le_exam_last_passed"] = slide
+                    st.session_state["near_va_le_exam_wrong_streak"] = 0
+                    st.session_state["near_va_le_exam_slide"] = min(slide + 1, max_slide)
+                    st.rerun()
+
+                if wrong_click and not stopped:
+                    wrong_streak += 1
+                    st.session_state["near_va_le_exam_wrong_streak"] = wrong_streak
+                    st.session_state["near_va_le_exam_slide"] = min(slide + 1, max_slide)
+                    if wrong_streak >= 2:
+                        st.session_state["near_va_le_exam_stopped"] = True
+                    st.rerun()
+
+                stopped = bool(st.session_state.get("near_va_le_exam_stopped", False))
+                last_passed = int(st.session_state.get("near_va_le_exam_last_passed", 0) or 0)
+                if stopped:
+                    st.warning("???????????????????? (????????? 2 ?????)")
+                if last_passed > 0:
+                    st.success(f"????????????: ????? {last_passed} = {fmt_va(last_passed)}")
+                    if st.button("????????", key="near_va_le_exam_apply"):
+                        st.session_state["near_va_le_exam_apply_pending"] = last_passed
+                        st.rerun()
+
         near_vphoria = st.selectbox(
             "7) Near Vertical phoria (1–7)",
             options=[None] + list(range(1, 8)),
