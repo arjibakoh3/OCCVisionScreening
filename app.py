@@ -572,11 +572,39 @@ def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _firebase_client_from_info(info: Dict[str, Any]):
+    normalized = _normalize_firebase_info(info)
+    project_id = str(normalized.get("project_id", "") or "")
+    if firebase_admin._apps:
+        try:
+            current_app = firebase_admin.get_app()
+            current_pid = str(current_app.options.get("projectId", "") or "")
+            # If the project changes between runs, reset the app to avoid sticky state.
+            if project_id and current_pid and project_id != current_pid:
+                firebase_admin.delete_app(current_app)
+        except Exception:
+            pass
     if not firebase_admin._apps:
-        normalized = _normalize_firebase_info(info)
         cred = credentials.Certificate(normalized)
-        firebase_admin.initialize_app(cred)
+        options = {"projectId": project_id} if project_id else None
+        firebase_admin.initialize_app(cred, options)
     return firestore.client()
+
+
+def _firebase_private_key_diagnostics(info: Dict[str, Any]) -> Dict[str, Any]:
+    pk = info.get("private_key")
+    if not isinstance(pk, str):
+        return {"has_private_key": False}
+    header = "-----BEGIN PRIVATE KEY-----"
+    footer = "-----END PRIVATE KEY-----"
+    return {
+        "has_private_key": True,
+        "has_header": header in pk,
+        "has_footer": footer in pk,
+        "newline_count": pk.count("\n"),
+        "length": len(pk),
+        "project_id": bool(info.get("project_id")),
+        "client_email": bool(info.get("client_email")),
+    }
 
 
 def _firebase_save_record(db, collection: str, payload: Dict[str, Any]) -> None:
@@ -1093,6 +1121,23 @@ with right:
                             st.success("บันทึกสำเร็จ")
                 except Exception as e:
                     st.error(f"เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
+                    try:
+                        diag_info = _normalize_firebase_info(fb_info)
+                        diag = _firebase_private_key_diagnostics(diag_info)
+                        if diag.get("has_private_key"):
+                            st.caption(
+                                "Firebase key check: "
+                                f"header={diag.get('has_header')} | "
+                                f"footer={diag.get('has_footer')} | "
+                                f"newlines={diag.get('newline_count')} | "
+                                f"len={diag.get('length')} | "
+                                f"project_id={diag.get('project_id')} | "
+                                f"client_email={diag.get('client_email')}"
+                            )
+                        else:
+                            st.caption("Firebase key check: ไม่พบ private_key ในข้อมูลที่โหลด")
+                    except Exception:
+                        pass
             else:
                 st.info("กรอก Service account และชื่อ collection เพื่อเริ่มใช้งาน")
 
