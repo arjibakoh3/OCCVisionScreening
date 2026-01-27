@@ -576,12 +576,21 @@ def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
             lines = pk_fixed.split("\n")
             cleaned: List[str] = []
             for i, line in enumerate(lines):
-                if not line.strip():
-                    prev_line = lines[i - 1] if i > 0 else ""
-                    next_line = lines[i + 1] if i + 1 < len(lines) else ""
-                    if prev_line.strip() == header or next_line.strip() == footer:
-                        continue
-                cleaned.append(line)
+                s = line.strip()
+                if not s:
+                    continue
+                if s == header or s == footer:
+                    cleaned.append(s)
+                    continue
+                # Drop any stray dashed lines inside the body.
+                if s.startswith("-"):
+                    continue
+                cleaned.append(s)
+            # Ensure the framing is preserved after cleanup.
+            if not cleaned or cleaned[0] != header:
+                cleaned.insert(0, header)
+            if cleaned[-1] != footer:
+                cleaned.append(footer)
             pk_fixed = "\n".join(cleaned)
         normalized["private_key"] = pk_fixed
     return normalized
@@ -1082,8 +1091,17 @@ with right:
                 st.warning(f"อ่าน Firebase Secrets ไม่สำเร็จ: {secrets_fb_error}")
                 st.caption("แนะนำใช้ TOML แบบแยกคีย์ (ไม่ใช้ service_account_json) หรือใส่ service_account_json ให้ถูกต้อง")
 
-            fb_file = st.file_uploader("Service account JSON (Firebase)", type=["json"])
-            fb_text = st.text_area("หรือวาง JSON ของ Service account ที่นี่ (Firebase)", value="", height=120)
+            # Hide local-only upload inputs when secrets are already configured (e.g., Streamlit Cloud).
+            fb_file = None
+            fb_text = ""
+            if not secrets_fb:
+                with st.expander("Advanced: Service account (local only)", expanded=False):
+                    fb_file = st.file_uploader("Service account JSON (Firebase)", type=["json"])
+                    fb_text = st.text_area(
+                        "หรือวาง JSON ของ Service account ที่นี่ (Firebase)",
+                        value="",
+                        height=120,
+                    )
             fb_collection = st.text_input("Firestore collection", key="firebase_collection")
             fb_refresh = st.number_input("รีเฟรชรายการทุก (วินาที)", min_value=5, max_value=60, value=st.session_state["firebase_refresh_sec"], key="firebase_refresh_sec")
             fb_auto = st.checkbox("เปิด Auto refresh รายการเคส", value=st.session_state["firebase_autorefresh"], key="firebase_autorefresh")
