@@ -1,4 +1,5 @@
 import json
+import base64
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
@@ -544,9 +545,22 @@ def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
             pk_fixed.startswith("'") and pk_fixed.endswith("'")
         ):
             pk_fixed = pk_fixed[1:-1]
+        # Some setups store the private key as base64 to avoid newline issues.
+        if "BEGIN PRIVATE KEY" not in pk_fixed and "END PRIVATE KEY" not in pk_fixed:
+            try:
+                decoded = base64.b64decode(pk_fixed).decode("utf-8", errors="ignore")
+                if "BEGIN PRIVATE KEY" in decoded and "END PRIVATE KEY" in decoded:
+                    pk_fixed = decoded
+            except Exception:
+                pass
         # Ensure proper PEM framing with line breaks after header/footer.
         header = "-----BEGIN PRIVATE KEY-----"
         footer = "-----END PRIVATE KEY-----"
+        if header not in pk_fixed and footer not in pk_fixed:
+            # If the content looks like key material but is missing framing, wrap it.
+            # This is a best-effort fallback and won't fix truly invalid keys.
+            if "PRIVATE KEY" not in pk_fixed and len(pk_fixed) > 200:
+                pk_fixed = f"{header}\n{pk_fixed}\n{footer}"
         if header in pk_fixed and footer in pk_fixed:
             pk_fixed = pk_fixed.replace(header, header + "\n")
             pk_fixed = pk_fixed.replace(footer, "\n" + footer)
