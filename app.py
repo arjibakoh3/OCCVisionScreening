@@ -58,7 +58,7 @@ class Standards:
 JOB_GROUPS: Dict[str, Dict[str, Any]] = {
     # 0) Unspecified
     "unspecified": {
-        "label_th": "0) ??????? (Unspecified / Unknown job group)",
+        "label_th": "0) ไม่ระบุ (Unspecified / Unknown job group)",
         # Use all N/A thresholds so we can still save and review the case.
         "std": Standards(
             far_binocular_required=False,
