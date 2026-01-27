@@ -530,9 +530,26 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     st.session_state["tech_name"] = review.get("technician", "")
 
 
+def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize service account fields (notably private_key newlines)."""
+    normalized = dict(info)
+    pk = normalized.get("private_key")
+    if isinstance(pk, str):
+        # Common issue in TOML/env vars: newline characters are escaped as "\n".
+        pk_fixed = pk.replace("\\n", "\n").strip()
+        # In some cases the key is wrapped in quotes.
+        if (pk_fixed.startswith('"') and pk_fixed.endswith('"')) or (
+            pk_fixed.startswith("'") and pk_fixed.endswith("'")
+        ):
+            pk_fixed = pk_fixed[1:-1]
+        normalized["private_key"] = pk_fixed
+    return normalized
+
+
 def _firebase_client_from_info(info: Dict[str, Any]):
     if not firebase_admin._apps:
-        cred = credentials.Certificate(info)
+        normalized = _normalize_firebase_info(info)
+        cred = credentials.Certificate(normalized)
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
