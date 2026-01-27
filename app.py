@@ -305,9 +305,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
         l_temp = vf.get("left_temp", "—")
         r_temp_txt = f"{r_temp}°" if isinstance(r_temp, int) else str(r_temp)
         l_temp_txt = f"{l_temp}°" if isinstance(l_temp, int) else str(l_temp)
-        r_nasal = "เห็นแสง" if vf.get("right_nasal_seen") else "ไม่เห็นแสง"
-        l_nasal = "เห็นแสง" if vf.get("left_nasal_seen") else "ไม่เห็นแสง"
-        vf_value = f"R Temporal:{r_temp_txt} / Nasal45:{r_nasal} | L Temporal:{l_temp_txt} / Nasal45:{l_nasal}"
+        vf_value = f"R Temporal:{r_temp_txt} | L Temporal:{l_temp_txt}"
 
     inter = inputs.get("intermediate")
 
@@ -468,6 +466,7 @@ def _set_default_state() -> None:
         "firebase_autosave": False,
         "firebase_doc_id": "",
         "firebase_last_hash": "",
+        "firebase_save_request": False,
         "pending_payload": None,
     }
     for k, v in defaults.items():
@@ -761,98 +760,102 @@ with left:
     with info3:
         exam_date = st.date_input("วันที่ตรวจ", value=st.session_state["exam_date"], key="exam_date")
 
-    st.markdown("### Far vision (20 ft.)")
+    far_col, near_col = st.columns(2)
 
-    far_cols = st.columns([1, 1, 1])
-    with far_cols[0]:
+    with far_col:
+        st.markdown("### Far vision (20 ft.)")
+
+        # Keep Far vision fields in a strict vertical order (important for mobile UI).
         far_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน", key="far_binocular_ok")
-        far_stereo = st.selectbox(
-            "5) Stereo depth (1–9)",
-            options=[None] + list(range(1, 10)),
-            index=_index_for(st.session_state["far_stereo"], [None] + list(range(1, 10)), 0),
-            format_func=lambda x: "—" if x is None else fmt_stereo(x),
-            key="far_stereo",
-        )
-        far_color_correct = st.number_input("6) Color correct (0–8)", min_value=0, max_value=8, value=st.session_state["far_color_correct"], key="far_color_correct")
-    with far_cols[1]:
         far_va_be = st.selectbox(
-            "2) Acuity Both eyes (1–14)",
+            "2) Acuity Both eyes (1?14)",
             list(range(1, 15)),
             index=_index_for(st.session_state["far_va_be"], list(range(1, 15)), 7),
             format_func=lambda x: fmt_va(x),
             key="far_va_be",
         )
         far_va_re = st.selectbox(
-            "3) Acuity Right eye (1–14)",
+            "3) Acuity Right eye (1?14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["far_va_re"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="far_va_re",
         )
         far_va_le = st.selectbox(
-            "4) Acuity Left eye (1–14)",
+            "4) Acuity Left eye (1?14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["far_va_le"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="far_va_le",
         )
-    with far_cols[2]:
+        far_stereo = st.selectbox(
+            "5) Stereo depth (1?9)",
+            options=[None] + list(range(1, 10)),
+            index=_index_for(st.session_state["far_stereo"], [None] + list(range(1, 10)), 0),
+            format_func=lambda x: "?" if x is None else fmt_stereo(x),
+            key="far_stereo",
+        )
+        far_color_correct = st.number_input(
+            "6) Color correct (0?8)",
+            min_value=0,
+            max_value=8,
+            value=st.session_state["far_color_correct"],
+            key="far_color_correct",
+        )
         far_vphoria = st.selectbox(
-            "7) Vertical phoria (1–7)",
+            "7) Vertical phoria (1?7)",
             options=[None] + list(range(1, 8)),
             index=_index_for(st.session_state["far_vphoria"], [None] + list(range(1, 8)), 0),
-            format_func=lambda x: "—" if x is None else str(x),
+            format_func=lambda x: "?" if x is None else str(x),
             key="far_vphoria",
         )
         far_lphoria = st.selectbox(
-            "8) Lateral phoria (1–15)",
+            "8) Lateral phoria (1?15)",
             options=[None] + list(range(1, 16)),
             index=_index_for(st.session_state["far_lphoria"], [None] + list(range(1, 16)), 0),
-            format_func=lambda x: "—" if x is None else str(x),
+            format_func=lambda x: "?" if x is None else str(x),
             key="far_lphoria",
         )
         st.caption("หมายเหตุ: ถ้ากลุ่มอาชีพนั้น ๆ เป็น N/A ระบบจะไม่ตัดตก แต่ยังให้บันทึกได้")
 
-    st.markdown("### Near vision (14 in.)")
+    with near_col:
+        st.markdown("### Near vision (14 in.)")
 
-    near_cols = st.columns([1, 1, 1])
-    with near_cols[0]:
+        # Keep Near vision fields in a strict vertical order (important for mobile UI).
         near_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน (Near)", key="near_binocular_ok")
-    with near_cols[1]:
         near_va_be = st.selectbox(
-            "2) Near Acuity Both eyes (1–14)",
+            "2) Near Acuity Both eyes (1?14)",
             list(range(1, 15)),
             index=_index_for(st.session_state["near_va_be"], list(range(1, 15)), 8),
             format_func=lambda x: fmt_va(x),
             key="near_va_be",
         )
         near_va_re = st.selectbox(
-            "3) Near Acuity Right eye (1–14)",
+            "3) Near Acuity Right eye (1?14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["near_va_re"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="near_va_re",
         )
         near_va_le = st.selectbox(
-            "4) Near Acuity Left eye (1–14)",
+            "4) Near Acuity Left eye (1?14)",
             [None] + list(range(1, 15)),
             index=_index_for(st.session_state["near_va_le"], [None] + list(range(1, 15)), 0),
             format_func=lambda x: "-" if x is None else fmt_va(x),
             key="near_va_le",
         )
-    with near_cols[2]:
         near_vphoria = st.selectbox(
-            "7) Near Vertical phoria (1–7)",
+            "7) Near Vertical phoria (1?7)",
             options=[None] + list(range(1, 8)),
             index=_index_for(st.session_state["near_vphoria"], [None] + list(range(1, 8)), 0),
-            format_func=lambda x: "—" if x is None else str(x),
+            format_func=lambda x: "?" if x is None else str(x),
             key="near_vphoria",
         )
         near_lphoria = st.selectbox(
-            "8) Near Lateral phoria (1–15)",
+            "8) Near Lateral phoria (1?15)",
             options=[None] + list(range(1, 16)),
             index=_index_for(st.session_state["near_lphoria"], [None] + list(range(1, 16)), 0),
-            format_func=lambda x: "—" if x is None else str(x),
+            format_func=lambda x: "?" if x is None else str(x),
             key="near_lphoria",
         )
 
@@ -890,14 +893,13 @@ with left:
 
     if include_visual_field:
         st.markdown("### Visual field (คัดกรอง/Perimeter score)")
-        vf_cols = st.columns([1, 1, 1])
+        vf_status = "ปกติ"
+        vf_cols = st.columns([1, 1])
         with vf_cols[0]:
-            vf_status = st.radio("สรุป Visual field", ["ปกติ", "สงสัยผิดปกติ/ต้องประเมินเพิ่ม"], horizontal=False, key="vf_status")
-        with vf_cols[1]:
             st.markdown("**Right Eye**")
             vf_right_temp = st.selectbox("Right Temporal (°)", options=[85, 70, 55, "ไม่เห็นแสง"], index=0, key="vf_right_temp")
             vf_right_nasal_seen = st.checkbox("Right Nasal 45° เห็นแสง", key="vf_right_nasal_seen")
-        with vf_cols[2]:
+        with vf_cols[1]:
             st.markdown("**Left Eye**")
             vf_left_temp = st.selectbox("Left Temporal (°)", options=[85, 70, 55, "ไม่เห็นแสง"], index=0, key="vf_left_temp")
             vf_left_nasal_seen = st.checkbox("Left Nasal 45° เห็นแสง", key="vf_left_nasal_seen")
@@ -1011,9 +1013,7 @@ with right:
         else:
             details.append((True, "Intermediate: N/A (ตามตารางของกลุ่มอาชีพนี้)"))
 
-    # Visual field (optional, not part of job standard comparison here)
-    if include_visual_field and vf_status != "ปกติ":
-        fails.append("Visual field")
+    # Visual field is recorded for reference only (no automatic fail).
 
     # Show results
     all_ok = (len(fails) == 0)
@@ -1022,6 +1022,11 @@ with right:
     st.write(f"**กลุ่มอาชีพ:** {JOB_GROUPS[job_key]['label_th']}")
     st.write(f"**การแก้ไขสายตาขณะตรวจ:** Far = {far_correction} | Near = {near_correction}")
     st.write(f"**ผลรวม:** {pass_fail_icon(all_ok)} (อิงเกณฑ์ V2a/Optec 5000 ของกลุ่มอาชีพนี้)")
+
+    # Quick save button directly under the summary.
+    if st.button("บันทึกลง Firebase ตอนนี้"):
+        st.session_state["firebase_save_request"] = True
+        st.rerun()
 
     st.markdown("### รายละเอียดรายหัวข้อ")
     for ok, msg in details:
@@ -1164,6 +1169,10 @@ with right:
                     db = _firebase_client_from_info(fb_info)
                     if fb_auto and hasattr(st, "autorefresh"):
                         st.autorefresh(interval=int(fb_refresh * 1000), key="firebase_autorefresh_tick")
+                    if st.session_state.get("firebase_save_request"):
+                        _firebase_save_record(db, fb_collection, payload)
+                        st.session_state["firebase_save_request"] = False
+                        st.success("บันทึกสำเร็จ")
                     # Auto-update current case when form changes
                     if fb_autosave and st.session_state.get("firebase_doc_id"):
                         current_hash = json.dumps(payload, ensure_ascii=False, sort_keys=True)
