@@ -572,6 +572,17 @@ def _normalize_firebase_info(info: Dict[str, Any]) -> Dict[str, Any]:
             # Collapse multiple blank lines that can appear after replacements.
             while "\n\n\n" in pk_fixed:
                 pk_fixed = pk_fixed.replace("\n\n\n", "\n\n")
+            # Remove blank lines immediately after header or before footer.
+            lines = pk_fixed.split("\n")
+            cleaned: List[str] = []
+            for i, line in enumerate(lines):
+                if not line.strip():
+                    prev_line = lines[i - 1] if i > 0 else ""
+                    next_line = lines[i + 1] if i + 1 < len(lines) else ""
+                    if prev_line.strip() == header or next_line.strip() == footer:
+                        continue
+                cleaned.append(line)
+            pk_fixed = "\n".join(cleaned)
         normalized["private_key"] = pk_fixed
     return normalized
 
