@@ -434,7 +434,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
         <div class="small">{meta["job_group_label"]}</div>
         <div class="section-title">Device</div>
         <div class="small">{meta["device"]}</div>
-        <div class="section-title">สรุปผลการตรวจ (ตามที่ตรวจจริง)</div>
+        <div class="section-title">สรุปผลการตรวจ</div>
         <div class="small">
           {"<br>".join(summary_lines) if summary_lines else "-"}
         </div>
