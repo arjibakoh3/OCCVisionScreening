@@ -330,6 +330,53 @@ def build_form_html(payload: Dict[str, Any]) -> str:
 
     inter = inputs.get("intermediate")
 
+    # Summary lines for actual tested items only (skip N/A / not tested).
+    summary_lines: List[str] = []
+
+    def _pass_text(ok: bool) -> str:
+        return "ผ่านเกณฑ์" if ok else "ต่ำกว่าเกณฑ์"
+
+    far = inputs.get("far", {})
+    near = inputs.get("near", {})
+
+    if std.far_va_be_min is not None and far.get("va_be") is not None:
+        val = far["va_be"]
+        summary_lines.append(f"มองไกลสองตา {fmt_va(val)} — {_pass_text(val >= std.far_va_be_min)}")
+    if std.far_va_re_min is not None and far.get("va_re") is not None:
+        val = far["va_re"]
+        summary_lines.append(f"มองไกลตาขวา {fmt_va(val)} — {_pass_text(val >= std.far_va_re_min)}")
+    if std.far_va_le_min is not None and far.get("va_le") is not None:
+        val = far["va_le"]
+        summary_lines.append(f"มองไกลตาซ้าย {fmt_va(val)} — {_pass_text(val >= std.far_va_le_min)}")
+    if std.far_stereo_min is not None and far.get("stereo") is not None:
+        val = far["stereo"]
+        summary_lines.append(f"การกะระยะชัดลึก {fmt_stereo(val)} — {_pass_text(val >= std.far_stereo_min)}")
+    if std.far_color_min_correct is not None and far.get("color_correct") is not None:
+        val = far["color_correct"]
+        summary_lines.append(f"การแยกสี {val}/8 — {_pass_text(val >= std.far_color_min_correct)}")
+    if std.far_vphoria_range is not None and far.get("vphoria") is not None:
+        val = far["vphoria"]
+        summary_lines.append(f"Far vertical phoria {val} — {_pass_text(std.far_vphoria_range.contains(val))}")
+    if std.far_lphoria_range is not None and far.get("lphoria") is not None:
+        val = far["lphoria"]
+        summary_lines.append(f"Far lateral phoria {val} — {_pass_text(std.far_lphoria_range.contains(val))}")
+
+    if std.near_va_be_min is not None and near.get("va_be") is not None:
+        val = near["va_be"]
+        summary_lines.append(f"มองใกล้สองตา {fmt_va(val)} — {_pass_text(val >= std.near_va_be_min)}")
+    if std.near_va_re_min is not None and near.get("va_re") is not None:
+        val = near["va_re"]
+        summary_lines.append(f"มองใกล้ตาขวา {fmt_va(val)} — {_pass_text(val >= std.near_va_re_min)}")
+    if std.near_va_le_min is not None and near.get("va_le") is not None:
+        val = near["va_le"]
+        summary_lines.append(f"มองใกล้ตาซ้าย {fmt_va(val)} — {_pass_text(val >= std.near_va_le_min)}")
+    if std.near_vphoria_range is not None and near.get("vphoria") is not None:
+        val = near["vphoria"]
+        summary_lines.append(f"Near vertical phoria {val} — {_pass_text(std.near_vphoria_range.contains(val))}")
+    if std.near_lphoria_range is not None and near.get("lphoria") is not None:
+        val = near["lphoria"]
+        summary_lines.append(f"Near lateral phoria {val} — {_pass_text(std.near_lphoria_range.contains(val))}")
+
     html = f"""<!DOCTYPE html>
 <html lang="th">
 <head>
@@ -387,9 +434,9 @@ def build_form_html(payload: Dict[str, Any]) -> str:
         <div class="small">{meta["job_group_label"]}</div>
         <div class="section-title">Device</div>
         <div class="small">{meta["device"]}</div>
-        <div class="section-title">Recommendation</div>
+        <div class="section-title">สรุปผลการตรวจ (ตามที่ตรวจจริง)</div>
         <div class="small">
-          {"<br>".join(auto["recommendations"]) if auto["recommendations"] else "-"}
+          {"<br>".join(summary_lines) if summary_lines else "-"}
         </div>
         <div class="section-title">Physician note</div>
         <div class="small">
