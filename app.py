@@ -216,7 +216,7 @@ def eval_min(name: str, val: Optional[int], min_required: Optional[int]) -> Tupl
     if min_required is None:
         return True, f"{name}: N/A"
     if val is None:
-        return False, f"{name}: ไม่ได้กรอกผล"
+        return True, f"{name}: ไม่ได้ตรวจ (ไม่นำมาตัดเกณฑ์)"
     ok = val >= min_required
     return ok, f"{name}: {fmt_va(val)} (เกณฑ์ ≥ {min_required} = {fmt_va(min_required)})"
 
@@ -224,7 +224,7 @@ def eval_stereo(val: Optional[int], min_required: Optional[int]) -> Tuple[bool, 
     if min_required is None:
         return True, "Stereo depth: N/A"
     if val is None:
-        return False, "Stereo depth: ไม่ได้กรอกผล"
+        return True, "Stereo depth: ไม่ได้ตรวจ (ไม่นำมาตัดเกณฑ์)"
     ok = val >= min_required
     return ok, f"Stereo depth: {fmt_stereo(val)} (เกณฑ์ ≥ {min_required} = {fmt_stereo(min_required)})"
 
@@ -232,7 +232,7 @@ def eval_color(correct_digits: Optional[int], min_required: Optional[int]) -> Tu
     if min_required is None:
         return True, "Color: N/A"
     if correct_digits is None:
-        return False, "Color: ไม่ได้กรอกผล"
+        return True, "Color: ไม่ได้ตรวจ (ไม่นำมาตัดเกณฑ์)"
     ok = correct_digits >= min_required
     return ok, f"Color correct: {correct_digits}/8 (เกณฑ์ ≥ {min_required}/8)"
 
@@ -240,7 +240,7 @@ def eval_range(name: str, val: Optional[int], r: Optional[Range], na_ok: bool = 
     if r is None:
         return (True, f"{name}: N/A") if na_ok else (False, f"{name}: N/A")
     if val is None:
-        return False, f"{name}: ไม่ได้กรอกผล"
+        return True, f"{name}: ไม่ได้ตรวจ (ไม่นำมาตัดเกณฑ์)"
     ok = r.contains(val)
     return ok, f"{name}: {val} (เกณฑ์ {r.lo}–{r.hi})"
 
