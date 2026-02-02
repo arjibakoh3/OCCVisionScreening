@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     import firebase_admin
@@ -1933,10 +1934,28 @@ with right:
     st.download_button("ดาวน์โหลดฟอร์ม (HTML สำหรับพิมพ์)", data=form_html.encode("utf-8"),
                        file_name=f"vision_form_{hn or 'no_hn'}_{exam_date}.html", mime="text/html")
     form_html_b64 = base64.b64encode(form_html.encode("utf-8")).decode("ascii")
-    form_open_url = f"data:text/html;charset=utf-8;base64,{form_html_b64}"
-    st.markdown(
-        f'<a href="{form_open_url}" target="_blank" rel="noopener noreferrer">เปิดฟอร์มในแท็บใหม่</a>',
-        unsafe_allow_html=True,
+    components.html(
+        f"""
+        <button id="open-form-tab" style="padding: 0.4rem 0.8rem; cursor: pointer;">เปิดฟอร์มในแท็บใหม่</button>
+        <script>
+        (function() {{
+          const btn = document.getElementById("open-form-tab");
+          const b64 = "{form_html_b64}";
+          btn.addEventListener("click", function() {{
+            try {{
+              const html = atob(b64);
+              const blob = new Blob([html], {{ type: "text/html;charset=utf-8" }});
+              const url = URL.createObjectURL(blob);
+              window.open(url, "_blank", "noopener,noreferrer");
+              setTimeout(() => URL.revokeObjectURL(url), 10000);
+            }} catch (e) {{
+              alert("เปิดแท็บไม่สำเร็จ: " + e);
+            }}
+          }});
+        }})();
+        </script>
+        """,
+        height=50,
     )
 
 st.caption("หมายเหตุ: ระบบนี้เป็นแบบคัดกรอง + แนะนำเฉย ๆ เพื่อให้แพทย์ตรวจทานก่อนคืนข้อมูล (ไม่ตัดสินความเหมาะสมในการทำงาน)")
