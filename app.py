@@ -17,7 +17,7 @@ except Exception:
 # Reference: V2a / Optec 5000 Job Standards (as per user's provided PDF)
 # We keep thresholds as "minimum picture number achieved" (e.g., VA BE >= 8)
 # and phoria ranges as inclusive min/max.
-# Color: pass if correct_digits >= 5 out of 8.
+# Color: pass if correct_digits >= threshold out of total color slides.
 # Stereo depth: pass if score >= threshold (when applicable).
 # ----------------------------
 
@@ -198,6 +198,7 @@ FAR_STEREO_KEY: List[str] = [
 ]
 
 FAR_COLOR_KEY: List[str] = ["12","5","26","6","16","x"]
+FAR_COLOR_TOTAL = len(FAR_COLOR_KEY)
 
 def fmt_va(x: Optional[int]) -> str:
     if x is None:
@@ -234,7 +235,7 @@ def eval_color(correct_digits: Optional[int], min_required: Optional[int]) -> Tu
     if correct_digits is None:
         return True, "Color: ไม่ได้ตรวจ (ไม่นำมาตัดเกณฑ์)"
     ok = correct_digits >= min_required
-    return ok, f"Color correct: {correct_digits}/8 (เกณฑ์ ≥ {min_required}/8)"
+    return ok, f"Color correct: {correct_digits}/{FAR_COLOR_TOTAL} (เกณฑ์ ≥ {min_required}/{FAR_COLOR_TOTAL})"
 
 def eval_range(name: str, val: Optional[int], r: Optional[Range], na_ok: bool = True) -> Tuple[bool, str]:
     if r is None:
@@ -353,7 +354,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
         summary_lines.append(f"การกะระยะชัดลึก {fmt_stereo(val)} — {_pass_text(val >= std.far_stereo_min)}")
     if std.far_color_min_correct is not None and far.get("color_correct") is not None:
         val = far["color_correct"]
-        summary_lines.append(f"การแยกสี {val}/8 — {_pass_text(val >= std.far_color_min_correct)}")
+        summary_lines.append(f"การแยกสี {val}/{FAR_COLOR_TOTAL} — {_pass_text(val >= std.far_color_min_correct)}")
     if std.far_vphoria_range is not None and far.get("vphoria") is not None:
         val = far["vphoria"]
         summary_lines.append(f"Far vertical phoria {val} — {_pass_text(std.far_vphoria_range.contains(val))}")
@@ -461,7 +462,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
           <tr><td>Far: VA Right</td><td>{val_va(inputs["far"]["va_re"])}</td><td>{ref_min(std.far_va_re_min, fmt_va)}</td></tr>
           <tr><td>Far: VA Left</td><td>{val_va(inputs["far"]["va_le"])}</td><td>{ref_min(std.far_va_le_min, fmt_va)}</td></tr>
           <tr><td>Far: Stereo depth</td><td>{fmt_stereo(inputs["far"]["stereo"]) if inputs["far"]["stereo"] is not None else "-"}</td><td>{ref_min(std.far_stereo_min, fmt_stereo)}</td></tr>
-          <tr><td>Far: Color discrimination</td><td>{inputs["far"]["color_correct"]}/8</td><td>{ref_min(std.far_color_min_correct, lambda v: f"{v}/8")}</td></tr>
+          <tr><td>Far: Color discrimination</td><td>{inputs["far"]["color_correct"]}/{FAR_COLOR_TOTAL}</td><td>{ref_min(std.far_color_min_correct, lambda v: f"{v}/{FAR_COLOR_TOTAL}")}</td></tr>
           <tr><td>Far: Vertical phoria</td><td>{val_num(inputs["far"]["vphoria"])}</td><td>{ref_range(std.far_vphoria_range)}</td></tr>
           <tr><td>Far: Lateral phoria</td><td>{val_num(inputs["far"]["lphoria"])}</td><td>{ref_range(std.far_lphoria_range)}</td></tr>
           <tr><td>Near: Binocular (3 cubes)</td><td>{"PASS" if inputs["near"]["binocular_ok"] else "FAIL"}</td><td>Must pass 3 cubes</td></tr>
@@ -512,7 +513,7 @@ def _set_default_state() -> None:
         "far_stereo_exam_stopped": False,
         "far_stereo_exam_apply_pending": None,
 
-        "far_color_correct": 8,
+        "far_color_correct": FAR_COLOR_TOTAL,
         "far_color_exam_enabled": False,
         "far_color_exam_slide": 1,
         "far_color_exam_wrong_streak": 0,
@@ -637,7 +638,7 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     st.session_state["far_va_re"] = far.get("va_re")
     st.session_state["far_va_le"] = far.get("va_le")
     st.session_state["far_stereo"] = far.get("stereo")
-    st.session_state["far_color_correct"] = far.get("color_correct", 8)
+    st.session_state["far_color_correct"] = max(0, min(int(far.get("color_correct", FAR_COLOR_TOTAL)), FAR_COLOR_TOTAL))
     st.session_state["far_vphoria"] = far.get("vphoria")
     st.session_state["far_lphoria"] = far.get("lphoria")
 
@@ -1185,17 +1186,17 @@ with left:
 
         # Apply exam-mode result before instantiating the widget.
         if st.session_state.get("far_color_exam_apply_pending"):
-            st.session_state["far_color_correct"] = int(st.session_state["far_color_exam_apply_pending"])
+            st.session_state["far_color_correct"] = max(0, min(int(st.session_state["far_color_exam_apply_pending"]), FAR_COLOR_TOTAL))
             st.session_state["far_color_exam_apply_pending"] = None
 
-        st.markdown("6) Color correct (0–8)")
+        st.markdown(f"6) Color correct (0–{FAR_COLOR_TOTAL})")
         color_col, color_exam_col = st.columns([0.8, 1.6])
         with color_col:
             far_color_correct = st.number_input(
-                "6) Color correct (0–8)",
+                f"6) Color correct (0–{FAR_COLOR_TOTAL})",
                 min_value=0,
-                max_value=8,
-                value=st.session_state["far_color_correct"],
+                max_value=FAR_COLOR_TOTAL,
+                value=max(0, min(int(st.session_state["far_color_correct"]), FAR_COLOR_TOTAL)),
                 key="far_color_correct",
                 label_visibility="collapsed",
             )
