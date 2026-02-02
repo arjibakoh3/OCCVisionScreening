@@ -1943,8 +1943,8 @@ with right:
           const b64 = "{form_html_b64}";
           btn.addEventListener("click", function() {{
             try {{
-              const html = atob(b64);
-              const blob = new Blob([html], {{ type: "text/html;charset=utf-8" }});
+              const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+              const blob = new Blob([bytes], {{ type: "text/html;charset=utf-8" }});
               const url = URL.createObjectURL(blob);
               window.open(url, "_blank", "noopener,noreferrer");
               setTimeout(() => URL.revokeObjectURL(url), 10000);
