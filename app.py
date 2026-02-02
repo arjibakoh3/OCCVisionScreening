@@ -157,7 +157,7 @@ JOB_GROUPS: Dict[str, Dict[str, Any]] = {
             far_stereo_min=None,
             far_color_min_correct=5,
             far_vphoria_range=Range(2, 6),
-            far_lphoria_range=None,
+            far_lphoria_range=Range(1, 15),
             near_va_be_min=7, near_va_re_min=6, near_va_le_min=6,
             near_vphoria_range=None,
             near_lphoria_range=None,
