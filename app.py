@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     import firebase_admin
@@ -1932,5 +1933,7 @@ with right:
     form_html = build_form_html(payload)
     st.download_button("ดาวน์โหลดฟอร์ม (HTML สำหรับพิมพ์)", data=form_html.encode("utf-8"),
                        file_name=f"vision_form_{hn or 'no_hn'}_{exam_date}.html", mime="text/html")
+    with st.expander("พรีวิวฟอร์มในเบราว์เซอร์ (ไม่ต้องดาวน์โหลดไฟล์)"):
+        components.html(form_html, height=900, scrolling=True)
 
 st.caption("หมายเหตุ: ระบบนี้เป็นแบบคัดกรอง + แนะนำเฉย ๆ เพื่อให้แพทย์ตรวจทานก่อนคืนข้อมูล (ไม่ตัดสินความเหมาะสมในการทำงาน)")
