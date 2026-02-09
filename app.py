@@ -214,6 +214,11 @@ def fmt_stereo(x: Optional[int]) -> str:
 def pass_fail_icon(ok: bool) -> str:
     return "✅ ผ่านเกณฑ์" if ok else "❌ ต่ำกว่าเกณฑ์"
 
+def fmt_bino_cubes(cubes: Optional[int]) -> str:
+    if cubes is None:
+        return "-"
+    return f"{cubes} cubes"
+
 def eval_min(name: str, val: Optional[int], min_required: Optional[int]) -> Tuple[bool, str]:
     if min_required is None:
         return True, f"{name}: N/A"
@@ -458,7 +463,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
             <th style="width:32%;">Measured</th>
             <th style="width:30%;">Reference (by job group)</th>
           </tr>
-          <tr><td>Far: Binocular (3 cubes)</td><td>{"PASS" if inputs["far"]["binocular_ok"] else "FAIL"}</td><td>Must pass 3 cubes</td></tr>
+          <tr><td>Far: Binocular (3 cubes)</td><td>{fmt_bino_cubes(inputs["far"].get("binocular_cubes"))}</td><td>Must pass 3 cubes</td></tr>
           <tr><td>Far: VA Both eyes</td><td>{val_va(inputs["far"]["va_be"])}</td><td>{ref_min(std.far_va_be_min, fmt_va)}</td></tr>
           <tr><td>Far: VA Right</td><td>{val_va(inputs["far"]["va_re"])}</td><td>{ref_min(std.far_va_re_min, fmt_va)}</td></tr>
           <tr><td>Far: VA Left</td><td>{val_va(inputs["far"]["va_le"])}</td><td>{ref_min(std.far_va_le_min, fmt_va)}</td></tr>
@@ -466,7 +471,7 @@ def build_form_html(payload: Dict[str, Any]) -> str:
           <tr><td>Far: Color discrimination</td><td>{inputs["far"]["color_correct"]}/{FAR_COLOR_TOTAL}</td><td>{ref_min(std.far_color_min_correct, lambda v: f"{v}/{FAR_COLOR_TOTAL}")}</td></tr>
           <tr><td>Far: Vertical phoria</td><td>{val_num(inputs["far"]["vphoria"])}</td><td>{ref_range(std.far_vphoria_range)}</td></tr>
           <tr><td>Far: Lateral phoria</td><td>{val_num(inputs["far"]["lphoria"])}</td><td>{ref_range(std.far_lphoria_range)}</td></tr>
-          <tr><td>Near: Binocular (3 cubes)</td><td>{"PASS" if inputs["near"]["binocular_ok"] else "FAIL"}</td><td>Must pass 3 cubes</td></tr>
+          <tr><td>Near: Binocular (3 cubes)</td><td>{fmt_bino_cubes(inputs["near"].get("binocular_cubes"))}</td><td>Must pass 3 cubes</td></tr>
           <tr><td>Near: VA Both eyes</td><td>{val_va(inputs["near"]["va_be"])}</td><td>{ref_min(std.near_va_be_min, fmt_va)}</td></tr>
           <tr><td>Near: VA Right</td><td>{val_va(inputs["near"]["va_re"])}</td><td>{ref_min(std.near_va_re_min, fmt_va)}</td></tr>
           <tr><td>Near: VA Left</td><td>{val_va(inputs["near"]["va_le"])}</td><td>{ref_min(std.near_va_le_min, fmt_va)}</td></tr>
@@ -506,6 +511,10 @@ def _set_default_state() -> None:
         "gender": "ชาย",
         "exam_date": datetime.today(),
         "far_binocular_ok": True,
+        "far_binocular_cubes": 3,
+        "far_binocular_2": False,
+        "far_binocular_3": True,
+        "far_binocular_4": False,
         "far_stereo": None,
         "far_stereo_exam_enabled": False,
         "far_stereo_exam_slide": 1,
@@ -548,6 +557,10 @@ def _set_default_state() -> None:
         "far_vphoria": None,
         "far_lphoria": None,
         "near_binocular_ok": True,
+        "near_binocular_cubes": 3,
+        "near_binocular_2": False,
+        "near_binocular_3": True,
+        "near_binocular_4": False,
         "near_va_be": 9,
         "near_va_be_exam_enabled": False,
         "near_va_be_exam_slide": 1,
@@ -606,6 +619,45 @@ def _index_for(value, options: List[Any], default_index: int = 0) -> int:
         return default_index
 
 
+def _resolve_binocular_choice(prefix: str, default: int = 3) -> int:
+    b2_key = f"{prefix}_binocular_2"
+    b3_key = f"{prefix}_binocular_3"
+    b4_key = f"{prefix}_binocular_4"
+    b2 = bool(st.session_state.get(b2_key, False))
+    b3 = bool(st.session_state.get(b3_key, False))
+    b4 = bool(st.session_state.get(b4_key, False))
+
+    # Keep only the highest checked value if multiple were selected.
+    if b4 and (b3 or b2):
+        st.session_state[b3_key] = False
+        st.session_state[b2_key] = False
+        return 4
+    if b3 and b2:
+        st.session_state[b2_key] = False
+        return 3
+    if b4:
+        return 4
+    if b3:
+        return 3
+    if b2:
+        return 2
+
+    # If nothing selected, snap to default and keep UI consistent.
+    if default == 4:
+        st.session_state[b4_key] = True
+        st.session_state[b3_key] = False
+        st.session_state[b2_key] = False
+    elif default == 2:
+        st.session_state[b2_key] = True
+        st.session_state[b3_key] = False
+        st.session_state[b4_key] = False
+    else:
+        st.session_state[b3_key] = True
+        st.session_state[b2_key] = False
+        st.session_state[b4_key] = False
+    return default
+
+
 def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     meta = payload.get("meta", {})
     person = payload.get("person", {})
@@ -634,7 +686,14 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     inter = inputs.get("intermediate")
     vf = inputs.get("visual_field")
 
-    st.session_state["far_binocular_ok"] = far.get("binocular_ok", True)
+    far_cubes = far.get("binocular_cubes")
+    if far_cubes is None:
+        far_cubes = 3 if far.get("binocular_ok", True) else 2
+    st.session_state["far_binocular_cubes"] = int(far_cubes)
+    st.session_state["far_binocular_ok"] = bool(st.session_state["far_binocular_cubes"] >= 3)
+    st.session_state["far_binocular_2"] = st.session_state["far_binocular_cubes"] == 2
+    st.session_state["far_binocular_3"] = st.session_state["far_binocular_cubes"] == 3
+    st.session_state["far_binocular_4"] = st.session_state["far_binocular_cubes"] == 4
     st.session_state["far_va_be"] = far.get("va_be")
     st.session_state["far_va_re"] = far.get("va_re")
     st.session_state["far_va_le"] = far.get("va_le")
@@ -643,7 +702,14 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     st.session_state["far_vphoria"] = far.get("vphoria")
     st.session_state["far_lphoria"] = far.get("lphoria")
 
-    st.session_state["near_binocular_ok"] = near.get("binocular_ok", True)
+    near_cubes = near.get("binocular_cubes")
+    if near_cubes is None:
+        near_cubes = 3 if near.get("binocular_ok", True) else 2
+    st.session_state["near_binocular_cubes"] = int(near_cubes)
+    st.session_state["near_binocular_ok"] = bool(st.session_state["near_binocular_cubes"] >= 3)
+    st.session_state["near_binocular_2"] = st.session_state["near_binocular_cubes"] == 2
+    st.session_state["near_binocular_3"] = st.session_state["near_binocular_cubes"] == 3
+    st.session_state["near_binocular_4"] = st.session_state["near_binocular_cubes"] == 4
     st.session_state["near_va_be"] = near.get("va_be")
     st.session_state["near_va_re"] = near.get("va_re")
     st.session_state["near_va_le"] = near.get("va_le")
@@ -891,7 +957,21 @@ with left:
         st.markdown("### Far vision (20 ft.)")
 
         # Keep Far vision fields in a strict vertical order (important for mobile UI).
-        far_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน", key="far_binocular_ok")
+        st.markdown("1) Binocular vision (เลือก 2/3/4 กล่อง)")
+        b1, b2, b3 = st.columns(3)
+        with b1:
+            st.checkbox("2 กล่อง", key="far_binocular_2")
+        with b2:
+            st.checkbox("3 กล่อง", key="far_binocular_3")
+        with b3:
+            st.checkbox("4 กล่อง", key="far_binocular_4")
+        far_binocular_cubes = _resolve_binocular_choice(
+            "far",
+            default=int(st.session_state.get("far_binocular_cubes", 3) or 3),
+        )
+        st.session_state["far_binocular_cubes"] = far_binocular_cubes
+        far_binocular_ok = far_binocular_cubes >= 3
+        st.session_state["far_binocular_ok"] = far_binocular_ok
         # Apply exam-mode result before instantiating the VA widget.
         if st.session_state.get("far_va_be_exam_apply_pending"):
             st.session_state["far_va_be"] = int(st.session_state["far_va_be_exam_apply_pending"])
@@ -1279,7 +1359,21 @@ with left:
         st.markdown("### Near vision (14 in.)")
 
         # Keep Near vision fields in a strict vertical order (important for mobile UI).
-        near_binocular_ok = st.checkbox("1) Binocular vision (3 cubes) — ผ่าน (Near)", key="near_binocular_ok")
+        st.markdown("1) Binocular vision (เลือก 2/3/4 กล่อง) — Near")
+        nb1, nb2, nb3 = st.columns(3)
+        with nb1:
+            st.checkbox("2 กล่อง", key="near_binocular_2")
+        with nb2:
+            st.checkbox("3 กล่อง", key="near_binocular_3")
+        with nb3:
+            st.checkbox("4 กล่อง", key="near_binocular_4")
+        near_binocular_cubes = _resolve_binocular_choice(
+            "near",
+            default=int(st.session_state.get("near_binocular_cubes", 3) or 3),
+        )
+        st.session_state["near_binocular_cubes"] = near_binocular_cubes
+        near_binocular_ok = near_binocular_cubes >= 3
+        st.session_state["near_binocular_ok"] = near_binocular_ok
 
         # Apply exam-mode result before instantiating the VA widget.
         if st.session_state.get("near_va_be_exam_apply_pending"):
@@ -1578,7 +1672,7 @@ with right:
     st.markdown("#### Far vision — เทียบเกณฑ์")
     if std.far_binocular_required:
         ok_bino = bool(far_binocular_ok)
-        details.append((ok_bino, f"Binocular vision: {'ผ่าน' if ok_bino else 'ไม่ผ่าน'} (เกณฑ์: 3 cubes)"))
+        details.append((ok_bino, f"Binocular vision: {fmt_bino_cubes(far_binocular_cubes)} — {'ผ่าน' if ok_bino else 'ไม่ผ่าน'} (เกณฑ์: 3 cubes)"))
         if not ok_bino:
             fails.append("Binocular (Far)")
 
@@ -1621,7 +1715,7 @@ with right:
     st.markdown("#### Near vision — เทียบเกณฑ์")
     if std.near_binocular_required:
         ok_bino_n = bool(near_binocular_ok)
-        details.append((ok_bino_n, f"Binocular vision (Near): {'ผ่าน' if ok_bino_n else 'ไม่ผ่าน'} (เกณฑ์: 3 cubes)"))
+        details.append((ok_bino_n, f"Binocular vision (Near): {fmt_bino_cubes(near_binocular_cubes)} — {'ผ่าน' if ok_bino_n else 'ไม่ผ่าน'} (เกณฑ์: 3 cubes)"))
         if not ok_bino_n:
             fails.append("Binocular (Near)")
 
@@ -1719,12 +1813,14 @@ with right:
         "inputs": {
             "far": {
                 "binocular_ok": far_binocular_ok,
+                "binocular_cubes": far_binocular_cubes,
                 "va_be": far_va_be, "va_re": far_va_re, "va_le": far_va_le,
                 "stereo": far_stereo, "color_correct": far_color_correct,
                 "vphoria": far_vphoria, "lphoria": far_lphoria
             },
             "near": {
                 "binocular_ok": near_binocular_ok,
+                "binocular_cubes": near_binocular_cubes,
                 "va_be": near_va_be, "va_re": near_va_re, "va_le": near_va_le,
                 "vphoria": near_vphoria, "lphoria": near_lphoria
             },
