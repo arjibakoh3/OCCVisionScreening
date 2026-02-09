@@ -346,49 +346,83 @@ def build_form_html(payload: Dict[str, Any]) -> str:
     far = inputs.get("far", {})
     near = inputs.get("near", {})
 
-    if std.far_binocular_required and far.get("binocular_cubes") is not None:
-        val = far["binocular_cubes"]
-        summary_lines.append(f"Binocular (Far) {val} cubes — {_pass_text(val == 3)}")
-    if std.far_va_be_min is not None and far.get("va_be") is not None:
-        val = far["va_be"]
-        summary_lines.append(f"มองไกลสองตา {fmt_va(val)} — {_pass_text(val >= std.far_va_be_min)}")
-    if std.far_va_re_min is not None and far.get("va_re") is not None:
-        val = far["va_re"]
-        summary_lines.append(f"มองไกลตาขวา {fmt_va(val)} — {_pass_text(val >= std.far_va_re_min)}")
-    if std.far_va_le_min is not None and far.get("va_le") is not None:
-        val = far["va_le"]
-        summary_lines.append(f"มองไกลตาซ้าย {fmt_va(val)} — {_pass_text(val >= std.far_va_le_min)}")
-    if std.far_stereo_min is not None and far.get("stereo") is not None:
-        val = far["stereo"]
-        summary_lines.append(f"การกะระยะชัดลึก {fmt_stereo(val)} — {_pass_text(val >= std.far_stereo_min)}")
-    if std.far_color_min_correct is not None and far.get("color_correct") is not None:
-        val = far["color_correct"]
-        summary_lines.append(f"การแยกสี {val}/{FAR_COLOR_TOTAL} — {_pass_text(val >= std.far_color_min_correct)}")
-    if std.far_vphoria_range is not None and far.get("vphoria") is not None:
-        val = far["vphoria"]
-        summary_lines.append(f"Far vertical phoria {val} — {_pass_text(std.far_vphoria_range.contains(val))}")
-    if std.far_lphoria_range is not None and far.get("lphoria") is not None:
-        val = far["lphoria"]
-        summary_lines.append(f"Far lateral phoria {val} — {_pass_text(std.far_lphoria_range.contains(val))}")
+    if meta.get("job_group_key") == "unspecified":
+        if far.get("binocular_cubes") is not None:
+            val = far["binocular_cubes"]
+            summary_lines.append(f"Binocular (Far) {val} cubes — {_pass_text(val == 3)}")
+        if far.get("va_be") is not None:
+            summary_lines.append(f"มองไกลสองตา {fmt_va(far['va_be'])}")
+        if far.get("va_re") is not None:
+            summary_lines.append(f"มองไกลตาขวา {fmt_va(far['va_re'])}")
+        if far.get("va_le") is not None:
+            summary_lines.append(f"มองไกลตาซ้าย {fmt_va(far['va_le'])}")
+        if far.get("stereo") is not None:
+            summary_lines.append(f"การกะระยะชัดลึก {fmt_stereo(far['stereo'])}")
+        if far.get("color_correct") is not None:
+            summary_lines.append(f"การแยกสี {far['color_correct']}/{FAR_COLOR_TOTAL}")
+        if far.get("vphoria") is not None:
+            summary_lines.append(f"Far vertical phoria {far['vphoria']}")
+        if far.get("lphoria") is not None:
+            summary_lines.append(f"Far lateral phoria {far['lphoria']}")
+    else:
+        if std.far_binocular_required and far.get("binocular_cubes") is not None:
+            val = far["binocular_cubes"]
+            summary_lines.append(f"Binocular (Far) {val} cubes — {_pass_text(val == 3)}")
+        if std.far_va_be_min is not None and far.get("va_be") is not None:
+            val = far["va_be"]
+            summary_lines.append(f"มองไกลสองตา {fmt_va(val)} — {_pass_text(val >= std.far_va_be_min)}")
+        if std.far_va_re_min is not None and far.get("va_re") is not None:
+            val = far["va_re"]
+            summary_lines.append(f"มองไกลตาขวา {fmt_va(val)} — {_pass_text(val >= std.far_va_re_min)}")
+        if std.far_va_le_min is not None and far.get("va_le") is not None:
+            val = far["va_le"]
+            summary_lines.append(f"มองไกลตาซ้าย {fmt_va(val)} — {_pass_text(val >= std.far_va_le_min)}")
+        if std.far_stereo_min is not None and far.get("stereo") is not None:
+            val = far["stereo"]
+            summary_lines.append(f"การกะระยะชัดลึก {fmt_stereo(val)} — {_pass_text(val >= std.far_stereo_min)}")
+        if std.far_color_min_correct is not None and far.get("color_correct") is not None:
+            val = far["color_correct"]
+            summary_lines.append(f"การแยกสี {val}/{FAR_COLOR_TOTAL} — {_pass_text(val >= std.far_color_min_correct)}")
+        if std.far_vphoria_range is not None and far.get("vphoria") is not None:
+            val = far["vphoria"]
+            summary_lines.append(f"Far vertical phoria {val} — {_pass_text(std.far_vphoria_range.contains(val))}")
+        if std.far_lphoria_range is not None and far.get("lphoria") is not None:
+            val = far["lphoria"]
+            summary_lines.append(f"Far lateral phoria {val} — {_pass_text(std.far_lphoria_range.contains(val))}")
 
-    if std.near_binocular_required and near.get("binocular_cubes") is not None:
-        val = near["binocular_cubes"]
-        summary_lines.append(f"Binocular (Near) {val} cubes — {_pass_text(val == 3)}")
-    if std.near_va_be_min is not None and near.get("va_be") is not None:
-        val = near["va_be"]
-        summary_lines.append(f"มองใกล้สองตา {fmt_va(val)} — {_pass_text(val >= std.near_va_be_min)}")
-    if std.near_va_re_min is not None and near.get("va_re") is not None:
-        val = near["va_re"]
-        summary_lines.append(f"มองใกล้ตาขวา {fmt_va(val)} — {_pass_text(val >= std.near_va_re_min)}")
-    if std.near_va_le_min is not None and near.get("va_le") is not None:
-        val = near["va_le"]
-        summary_lines.append(f"มองใกล้ตาซ้าย {fmt_va(val)} — {_pass_text(val >= std.near_va_le_min)}")
-    if std.near_vphoria_range is not None and near.get("vphoria") is not None:
-        val = near["vphoria"]
-        summary_lines.append(f"Near vertical phoria {val} — {_pass_text(std.near_vphoria_range.contains(val))}")
-    if std.near_lphoria_range is not None and near.get("lphoria") is not None:
-        val = near["lphoria"]
-        summary_lines.append(f"Near lateral phoria {val} — {_pass_text(std.near_lphoria_range.contains(val))}")
+    if meta.get("job_group_key") == "unspecified":
+        if near.get("binocular_cubes") is not None:
+            val = near["binocular_cubes"]
+            summary_lines.append(f"Binocular (Near) {val} cubes — {_pass_text(val == 3)}")
+        if near.get("va_be") is not None:
+            summary_lines.append(f"มองใกล้สองตา {fmt_va(near['va_be'])}")
+        if near.get("va_re") is not None:
+            summary_lines.append(f"มองใกล้ตาขวา {fmt_va(near['va_re'])}")
+        if near.get("va_le") is not None:
+            summary_lines.append(f"มองใกล้ตาซ้าย {fmt_va(near['va_le'])}")
+        if near.get("vphoria") is not None:
+            summary_lines.append(f"Near vertical phoria {near['vphoria']}")
+        if near.get("lphoria") is not None:
+            summary_lines.append(f"Near lateral phoria {near['lphoria']}")
+    else:
+        if std.near_binocular_required and near.get("binocular_cubes") is not None:
+            val = near["binocular_cubes"]
+            summary_lines.append(f"Binocular (Near) {val} cubes — {_pass_text(val == 3)}")
+        if std.near_va_be_min is not None and near.get("va_be") is not None:
+            val = near["va_be"]
+            summary_lines.append(f"มองใกล้สองตา {fmt_va(val)} — {_pass_text(val >= std.near_va_be_min)}")
+        if std.near_va_re_min is not None and near.get("va_re") is not None:
+            val = near["va_re"]
+            summary_lines.append(f"มองใกล้ตาขวา {fmt_va(val)} — {_pass_text(val >= std.near_va_re_min)}")
+        if std.near_va_le_min is not None and near.get("va_le") is not None:
+            val = near["va_le"]
+            summary_lines.append(f"มองใกล้ตาซ้าย {fmt_va(val)} — {_pass_text(val >= std.near_va_le_min)}")
+        if std.near_vphoria_range is not None and near.get("vphoria") is not None:
+            val = near["vphoria"]
+            summary_lines.append(f"Near vertical phoria {val} — {_pass_text(std.near_vphoria_range.contains(val))}")
+        if std.near_lphoria_range is not None and near.get("lphoria") is not None:
+            val = near["lphoria"]
+            summary_lines.append(f"Near lateral phoria {val} — {_pass_text(std.near_lphoria_range.contains(val))}")
 
     html = f"""<!DOCTYPE html>
 <html lang="th">
