@@ -512,9 +512,6 @@ def _set_default_state() -> None:
         "exam_date": datetime.today(),
         "far_binocular_ok": True,
         "far_binocular_cubes": 3,
-        "far_binocular_2": False,
-        "far_binocular_3": True,
-        "far_binocular_4": False,
         "far_stereo": None,
         "far_stereo_exam_enabled": False,
         "far_stereo_exam_slide": 1,
@@ -558,9 +555,6 @@ def _set_default_state() -> None:
         "far_lphoria": None,
         "near_binocular_ok": True,
         "near_binocular_cubes": 3,
-        "near_binocular_2": False,
-        "near_binocular_3": True,
-        "near_binocular_4": False,
         "near_va_be": 9,
         "near_va_be_exam_enabled": False,
         "near_va_be_exam_slide": 1,
@@ -619,43 +613,6 @@ def _index_for(value, options: List[Any], default_index: int = 0) -> int:
         return default_index
 
 
-def _resolve_binocular_choice(prefix: str, default: int = 3) -> int:
-    b2_key = f"{prefix}_binocular_2"
-    b3_key = f"{prefix}_binocular_3"
-    b4_key = f"{prefix}_binocular_4"
-    b2 = bool(st.session_state.get(b2_key, False))
-    b3 = bool(st.session_state.get(b3_key, False))
-    b4 = bool(st.session_state.get(b4_key, False))
-
-    # Keep only the highest checked value if multiple were selected.
-    if b4 and (b3 or b2):
-        st.session_state[b3_key] = False
-        st.session_state[b2_key] = False
-        return 4
-    if b3 and b2:
-        st.session_state[b2_key] = False
-        return 3
-    if b4:
-        return 4
-    if b3:
-        return 3
-    if b2:
-        return 2
-
-    # If nothing selected, snap to default and keep UI consistent.
-    if default == 4:
-        st.session_state[b4_key] = True
-        st.session_state[b3_key] = False
-        st.session_state[b2_key] = False
-    elif default == 2:
-        st.session_state[b2_key] = True
-        st.session_state[b3_key] = False
-        st.session_state[b4_key] = False
-    else:
-        st.session_state[b3_key] = True
-        st.session_state[b2_key] = False
-        st.session_state[b4_key] = False
-    return default
 
 
 def apply_payload_to_state(payload: Dict[str, Any]) -> None:
@@ -691,9 +648,6 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
         far_cubes = 3 if far.get("binocular_ok", True) else 2
     st.session_state["far_binocular_cubes"] = int(far_cubes)
     st.session_state["far_binocular_ok"] = bool(st.session_state["far_binocular_cubes"] >= 3)
-    st.session_state["far_binocular_2"] = st.session_state["far_binocular_cubes"] == 2
-    st.session_state["far_binocular_3"] = st.session_state["far_binocular_cubes"] == 3
-    st.session_state["far_binocular_4"] = st.session_state["far_binocular_cubes"] == 4
     st.session_state["far_va_be"] = far.get("va_be")
     st.session_state["far_va_re"] = far.get("va_re")
     st.session_state["far_va_le"] = far.get("va_le")
@@ -707,9 +661,6 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
         near_cubes = 3 if near.get("binocular_ok", True) else 2
     st.session_state["near_binocular_cubes"] = int(near_cubes)
     st.session_state["near_binocular_ok"] = bool(st.session_state["near_binocular_cubes"] >= 3)
-    st.session_state["near_binocular_2"] = st.session_state["near_binocular_cubes"] == 2
-    st.session_state["near_binocular_3"] = st.session_state["near_binocular_cubes"] == 3
-    st.session_state["near_binocular_4"] = st.session_state["near_binocular_cubes"] == 4
     st.session_state["near_va_be"] = near.get("va_be")
     st.session_state["near_va_re"] = near.get("va_re")
     st.session_state["near_va_le"] = near.get("va_le")
@@ -958,18 +909,15 @@ with left:
 
         # Keep Far vision fields in a strict vertical order (important for mobile UI).
         st.markdown("1) Binocular vision (เลือก 2/3/4 กล่อง)")
-        b1, b2, b3 = st.columns(3)
-        with b1:
-            st.checkbox("2 กล่อง", key="far_binocular_2")
-        with b2:
-            st.checkbox("3 กล่อง", key="far_binocular_3")
-        with b3:
-            st.checkbox("4 กล่อง", key="far_binocular_4")
-        far_binocular_cubes = _resolve_binocular_choice(
-            "far",
-            default=int(st.session_state.get("far_binocular_cubes", 3) or 3),
+        far_binocular_cubes = st.radio(
+            "1) Binocular vision (เลือก 2/3/4 กล่อง)",
+            options=[2, 3, 4],
+            index=_index_for(st.session_state.get("far_binocular_cubes", 3), [2, 3, 4], 1),
+            format_func=lambda x: f"{x} กล่อง",
+            key="far_binocular_cubes",
+            horizontal=True,
+            label_visibility="collapsed",
         )
-        st.session_state["far_binocular_cubes"] = far_binocular_cubes
         far_binocular_ok = far_binocular_cubes >= 3
         st.session_state["far_binocular_ok"] = far_binocular_ok
         # Apply exam-mode result before instantiating the VA widget.
@@ -1360,18 +1308,15 @@ with left:
 
         # Keep Near vision fields in a strict vertical order (important for mobile UI).
         st.markdown("1) Binocular vision (เลือก 2/3/4 กล่อง) — Near")
-        nb1, nb2, nb3 = st.columns(3)
-        with nb1:
-            st.checkbox("2 กล่อง", key="near_binocular_2")
-        with nb2:
-            st.checkbox("3 กล่อง", key="near_binocular_3")
-        with nb3:
-            st.checkbox("4 กล่อง", key="near_binocular_4")
-        near_binocular_cubes = _resolve_binocular_choice(
-            "near",
-            default=int(st.session_state.get("near_binocular_cubes", 3) or 3),
+        near_binocular_cubes = st.radio(
+            "1) Binocular vision (เลือก 2/3/4 กล่อง) — Near",
+            options=[2, 3, 4],
+            index=_index_for(st.session_state.get("near_binocular_cubes", 3), [2, 3, 4], 1),
+            format_func=lambda x: f"{x} กล่อง",
+            key="near_binocular_cubes",
+            horizontal=True,
+            label_visibility="collapsed",
         )
-        st.session_state["near_binocular_cubes"] = near_binocular_cubes
         near_binocular_ok = near_binocular_cubes >= 3
         st.session_state["near_binocular_ok"] = near_binocular_ok
 
