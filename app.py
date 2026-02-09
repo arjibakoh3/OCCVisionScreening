@@ -598,6 +598,8 @@ def _set_default_state() -> None:
         "firebase_autosave": False,
         "firebase_doc_id": "",
         "firebase_last_hash": "",
+        "physician_note_last_saved": "",
+        "physician_note_dirty": False,
         "firebase_save_request": False,
         "pending_payload": None,
     }
@@ -611,6 +613,10 @@ def _index_for(value, options: List[Any], default_index: int = 0) -> int:
         return options.index(value)
     except ValueError:
         return default_index
+
+
+def _mark_physician_note_dirty() -> None:
+    st.session_state["physician_note_dirty"] = True
 
 
 
@@ -686,6 +692,8 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
         st.session_state["include_visual_field"] = False
 
     st.session_state["physician_note"] = review.get("physician_note", "")
+    st.session_state["physician_note_last_saved"] = st.session_state["physician_note"]
+    st.session_state["physician_note_dirty"] = False
     st.session_state["physician_name"] = review.get("physician", "")
     st.session_state["tech_name"] = review.get("technician", "")
 
@@ -1735,7 +1743,13 @@ with right:
         st.write(f"- {r}")
 
     st.markdown("### ส่วนแพทย์ตรวจทาน (Physician review)")
-    physician_note = st.text_area("แพทย์ตรวจทาน/ข้อสังเกตเพิ่มเติม", value=st.session_state["physician_note"], height=100, key="physician_note")
+    physician_note = st.text_area(
+        "แพทย์ตรวจทาน/ข้อสังเกตเพิ่มเติม",
+        value=st.session_state["physician_note"],
+        height=100,
+        key="physician_note",
+        on_change=_mark_physician_note_dirty,
+    )
     # Hide physician/technician name fields; keep payload shape stable.
     physician_name = ""
     tech_name = ""
@@ -1870,6 +1884,14 @@ with right:
                         _firebase_save_record(db, fb_collection, payload)
                         st.session_state["firebase_save_request"] = False
                         st.success("บันทึกสำเร็จ")
+                    if st.session_state.get("physician_note_dirty") and st.session_state.get("firebase_doc_id"):
+                        if physician_note == st.session_state.get("physician_note_last_saved", ""):
+                            st.session_state["physician_note_dirty"] = False
+                        else:
+                            _firebase_update_record(db, fb_collection, st.session_state["firebase_doc_id"], payload)
+                            st.session_state["physician_note_last_saved"] = physician_note
+                            st.session_state["physician_note_dirty"] = False
+                            st.session_state["firebase_last_hash"] = json.dumps(payload, ensure_ascii=False, sort_keys=True)
                     # Auto-update current case when form changes
                     if fb_autosave and st.session_state.get("firebase_doc_id"):
                         current_hash = json.dumps(payload, ensure_ascii=False, sort_keys=True)
