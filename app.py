@@ -346,6 +346,9 @@ def build_form_html(payload: Dict[str, Any]) -> str:
     far = inputs.get("far", {})
     near = inputs.get("near", {})
 
+    if std.far_binocular_required and far.get("binocular_cubes") is not None:
+        val = far["binocular_cubes"]
+        summary_lines.append(f"Binocular (Far) {val} cubes — {_pass_text(val == 3)}")
     if std.far_va_be_min is not None and far.get("va_be") is not None:
         val = far["va_be"]
         summary_lines.append(f"มองไกลสองตา {fmt_va(val)} — {_pass_text(val >= std.far_va_be_min)}")
@@ -368,6 +371,9 @@ def build_form_html(payload: Dict[str, Any]) -> str:
         val = far["lphoria"]
         summary_lines.append(f"Far lateral phoria {val} — {_pass_text(std.far_lphoria_range.contains(val))}")
 
+    if std.near_binocular_required and near.get("binocular_cubes") is not None:
+        val = near["binocular_cubes"]
+        summary_lines.append(f"Binocular (Near) {val} cubes — {_pass_text(val == 3)}")
     if std.near_va_be_min is not None and near.get("va_be") is not None:
         val = near["va_be"]
         summary_lines.append(f"มองใกล้สองตา {fmt_va(val)} — {_pass_text(val >= std.near_va_be_min)}")
@@ -653,7 +659,7 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     if far_cubes is None:
         far_cubes = 3 if far.get("binocular_ok", True) else 2
     st.session_state["far_binocular_cubes"] = int(far_cubes)
-    st.session_state["far_binocular_ok"] = bool(st.session_state["far_binocular_cubes"] >= 3)
+    st.session_state["far_binocular_ok"] = bool(st.session_state["far_binocular_cubes"] == 3)
     st.session_state["far_va_be"] = far.get("va_be")
     st.session_state["far_va_re"] = far.get("va_re")
     st.session_state["far_va_le"] = far.get("va_le")
@@ -666,7 +672,7 @@ def apply_payload_to_state(payload: Dict[str, Any]) -> None:
     if near_cubes is None:
         near_cubes = 3 if near.get("binocular_ok", True) else 2
     st.session_state["near_binocular_cubes"] = int(near_cubes)
-    st.session_state["near_binocular_ok"] = bool(st.session_state["near_binocular_cubes"] >= 3)
+    st.session_state["near_binocular_ok"] = bool(st.session_state["near_binocular_cubes"] == 3)
     st.session_state["near_va_be"] = near.get("va_be")
     st.session_state["near_va_re"] = near.get("va_re")
     st.session_state["near_va_le"] = near.get("va_le")
@@ -926,7 +932,7 @@ with left:
             horizontal=True,
             label_visibility="collapsed",
         )
-        far_binocular_ok = far_binocular_cubes >= 3
+        far_binocular_ok = far_binocular_cubes == 3
         st.session_state["far_binocular_ok"] = far_binocular_ok
         # Apply exam-mode result before instantiating the VA widget.
         if st.session_state.get("far_va_be_exam_apply_pending"):
@@ -1325,7 +1331,7 @@ with left:
             horizontal=True,
             label_visibility="collapsed",
         )
-        near_binocular_ok = near_binocular_cubes >= 3
+        near_binocular_ok = near_binocular_cubes == 3
         st.session_state["near_binocular_ok"] = near_binocular_ok
 
         # Apply exam-mode result before instantiating the VA widget.
