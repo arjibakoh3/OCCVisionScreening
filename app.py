@@ -636,6 +636,7 @@ def _set_default_state() -> None:
         "firebase_refresh_sec": 10,
         "firebase_autorefresh": True,
         "firebase_autosave": False,
+        "firebase_use_date_filter": True,
         "firebase_doc_id": "",
         "firebase_last_hash": "",
         "physician_note_last_saved": "",
@@ -839,16 +840,30 @@ def _firebase_private_key_diagnostics(info: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _firebase_save_record(db, collection: str, payload: Dict[str, Any]) -> None:
+def _firebase_save_record(db, collection: str, payload: Dict[str, Any]) -> str:
     payload_to_save = dict(payload)
     payload_to_save["_meta"] = {"created_at": firestore.SERVER_TIMESTAMP}
-    db.collection(collection).add(payload_to_save)
+    _, doc_ref = db.collection(collection).add(payload_to_save)
+    return doc_ref.id
 
 
 def _firebase_update_record(db, collection: str, doc_id: str, payload: Dict[str, Any]) -> None:
     payload_to_save = dict(payload)
     payload_to_save["_meta"] = {"updated_at": firestore.SERVER_TIMESTAMP}
     db.collection(collection).document(doc_id).set(payload_to_save, merge=True)
+
+
+def _firebase_save_or_update_current(db, collection: str, payload: Dict[str, Any]) -> str:
+    doc_id = st.session_state.get("firebase_doc_id", "")
+    if doc_id:
+        _firebase_update_record(db, collection, doc_id, payload)
+    else:
+        doc_id = _firebase_save_record(db, collection, payload)
+        st.session_state["firebase_doc_id"] = doc_id
+    st.session_state["firebase_last_hash"] = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    st.session_state["physician_note_last_saved"] = payload.get("review", {}).get("physician_note", "")
+    st.session_state["physician_note_dirty"] = False
+    return doc_id
 
 
 def _firebase_list_records(db, collection: str, limit: int = 50):
@@ -1898,8 +1913,13 @@ with right:
             fb_auto = st.checkbox("เปิด Auto refresh รายการเคส", value=st.session_state["firebase_autorefresh"], key="firebase_autorefresh")
             fb_autosave = st.checkbox("Auto update เมื่อแก้ฟอร์ม (ต้องโหลดเคสก่อน)", value=st.session_state["firebase_autosave"], key="firebase_autosave")
             fb_search = st.text_input("ค้นหา (HN/ชื่อ)", value="")
-            fb_use_date_filter = st.checkbox("กรองตามวันที่ตรวจ", value=False)
-            fb_exam_date_filter = st.date_input("วันที่ตรวจ", value=datetime.today(), disabled=not fb_use_date_filter)
+            fb_use_date_filter = st.checkbox("กรองตามวันที่ตรวจ", key="firebase_use_date_filter")
+            fb_exam_date_filter = st.date_input(
+                "วันที่ตรวจ",
+                value=exam_date,
+                disabled=not fb_use_date_filter,
+                key="firebase_exam_date_filter",
+            )
 
             fb_info = None
             if secrets_fb is not None:
@@ -1921,9 +1941,9 @@ with right:
                     if fb_auto and hasattr(st, "autorefresh"):
                         st.autorefresh(interval=int(fb_refresh * 1000), key="firebase_autorefresh_tick")
                     if st.session_state.get("firebase_save_request"):
-                        _firebase_save_record(db, fb_collection, payload)
+                        saved_doc_id = _firebase_save_or_update_current(db, fb_collection, payload)
                         st.session_state["firebase_save_request"] = False
-                        st.success("บันทึกสำเร็จ")
+                        st.success(f"บันทึกสำเร็จ (อัปเดตเคส: {saved_doc_id})")
                     if st.session_state.get("physician_note_dirty") and st.session_state.get("firebase_doc_id"):
                         if physician_note == st.session_state.get("physician_note_last_saved", ""):
                             st.session_state["physician_note_dirty"] = False
@@ -1951,11 +1971,25 @@ with right:
                         sel = None
                         st.info("ยังไม่มีข้อมูลใน collection นี้")
 
-                    col_save, _ = st.columns([1, 1])
+                    current_doc_id = st.session_state.get("firebase_doc_id", "")
+                    if current_doc_id:
+                        st.caption(f"เคสที่กำลังแก้ไข: {current_doc_id}")
+                    else:
+                        st.caption("ยังไม่ได้โหลดหรือผูกกับเคสเดิม: Save จะสร้างเคสใหม่ครั้งแรก")
+
+                    col_save, col_save_as = st.columns([1, 1])
                     with col_save:
-                        if st.button("บันทึกเคสนี้ขึ้น Firebase"):
-                            _firebase_save_record(db, fb_collection, payload)
-                            st.success("บันทึกสำเร็จ")
+                        if st.button("Save"):
+                            saved_doc_id = _firebase_save_or_update_current(db, fb_collection, payload)
+                            st.success(f"บันทึกสำเร็จ (เคส: {saved_doc_id})")
+                    with col_save_as:
+                        if st.button("Save as new"):
+                            new_doc_id = _firebase_save_record(db, fb_collection, payload)
+                            st.session_state["firebase_doc_id"] = new_doc_id
+                            st.session_state["firebase_last_hash"] = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+                            st.session_state["physician_note_last_saved"] = physician_note
+                            st.session_state["physician_note_dirty"] = False
+                            st.success(f"สร้างเคสใหม่สำเร็จ (เคส: {new_doc_id})")
 
                     # Row-level actions: load/delete per record
                     if records:
