@@ -60,18 +60,19 @@ JOB_GROUPS: Dict[str, Dict[str, Any]] = {
     # 0) Unspecified
     "unspecified": {
         "label_th": "0) ไม่ระบุ (Unspecified / Unknown job group)",
-        # Use all N/A thresholds so we can still save and review the case.
+        # Keep VA/stereo/color as N/A, but apply the common phoria cut points
+        # used by most job groups so unspecified cases still flag phoria outliers.
         "std": Standards(
             far_binocular_required=False,
             far_va_be_min=None, far_va_re_min=None, far_va_le_min=None,
             far_stereo_min=None,
             far_color_min_correct=None,
-            far_vphoria_range=None,
-            far_lphoria_range=None,
+            far_vphoria_range=Range(3, 5),
+            far_lphoria_range=Range(4, 13),
             near_binocular_required=False,
             near_va_be_min=None, near_va_re_min=None, near_va_le_min=None,
-            near_vphoria_range=None,
-            near_lphoria_range=None,
+            near_vphoria_range=Range(3, 5),
+            near_lphoria_range=Range(4, 13),
             inter_va_be_min=None, inter_va_re_min=None, inter_va_le_min=None,
         ),
     },
