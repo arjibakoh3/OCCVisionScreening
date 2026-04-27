@@ -660,6 +660,14 @@ def _mark_physician_note_dirty() -> None:
     st.session_state["physician_note_dirty"] = True
 
 
+def _has_required_identity(name_value: Any, hn_value: Any) -> bool:
+    return bool(str(name_value or "").strip()) and bool(str(hn_value or "").strip())
+
+
+def _required_identity_message() -> str:
+    return "กรุณากรอกชื่อ-นามสกุลและ HN ก่อนบันทึก"
+
+
 
 
 def apply_payload_to_state(payload: Dict[str, Any]) -> None:
@@ -1782,7 +1790,10 @@ with right:
     st.write(f"**ผลรวม:** {pass_fail_icon(all_ok)} (อิงเกณฑ์ V2a ของกลุ่มอาชีพนี้)")
 
     # Quick save button directly under the summary.
-    if st.button("บันทึกลง Firebase ตอนนี้"):
+    can_save_case = _has_required_identity(name, hn)
+    if not can_save_case:
+        st.info(_required_identity_message())
+    if st.button("บันทึกลง Firebase ตอนนี้", disabled=not can_save_case):
         st.session_state["firebase_save_request"] = True
         st.rerun()
 
@@ -1941,10 +1952,13 @@ with right:
                     if fb_auto and hasattr(st, "autorefresh"):
                         st.autorefresh(interval=int(fb_refresh * 1000), key="firebase_autorefresh_tick")
                     if st.session_state.get("firebase_save_request"):
-                        saved_doc_id = _firebase_save_or_update_current(db, fb_collection, payload)
                         st.session_state["firebase_save_request"] = False
-                        st.success(f"บันทึกสำเร็จ (อัปเดตเคส: {saved_doc_id})")
-                    if st.session_state.get("physician_note_dirty") and st.session_state.get("firebase_doc_id"):
+                        if can_save_case:
+                            saved_doc_id = _firebase_save_or_update_current(db, fb_collection, payload)
+                            st.success(f"บันทึกสำเร็จ (อัปเดตเคส: {saved_doc_id})")
+                        else:
+                            st.error(_required_identity_message())
+                    if can_save_case and st.session_state.get("physician_note_dirty") and st.session_state.get("firebase_doc_id"):
                         if physician_note == st.session_state.get("physician_note_last_saved", ""):
                             st.session_state["physician_note_dirty"] = False
                         else:
@@ -1953,7 +1967,7 @@ with right:
                             st.session_state["physician_note_dirty"] = False
                             st.session_state["firebase_last_hash"] = json.dumps(payload, ensure_ascii=False, sort_keys=True)
                     # Auto-update current case when form changes
-                    if fb_autosave and st.session_state.get("firebase_doc_id"):
+                    if can_save_case and fb_autosave and st.session_state.get("firebase_doc_id"):
                         current_hash = json.dumps(payload, ensure_ascii=False, sort_keys=True)
                         if current_hash != st.session_state.get("firebase_last_hash"):
                             _firebase_update_record(db, fb_collection, st.session_state["firebase_doc_id"], payload)
@@ -1979,11 +1993,11 @@ with right:
 
                     col_save, col_save_as = st.columns([1, 1])
                     with col_save:
-                        if st.button("Save"):
+                        if st.button("Save", disabled=not can_save_case):
                             saved_doc_id = _firebase_save_or_update_current(db, fb_collection, payload)
                             st.success(f"บันทึกสำเร็จ (เคส: {saved_doc_id})")
                     with col_save_as:
-                        if st.button("Save as new"):
+                        if st.button("Save as new", disabled=not can_save_case):
                             new_doc_id = _firebase_save_record(db, fb_collection, payload)
                             st.session_state["firebase_doc_id"] = new_doc_id
                             st.session_state["firebase_last_hash"] = json.dumps(payload, ensure_ascii=False, sort_keys=True)
