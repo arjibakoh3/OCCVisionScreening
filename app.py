@@ -922,17 +922,9 @@ def _firebase_label(doc) -> str:
 # UI
 # ----------------------------
 
-st.set_page_config(page_title="Vision Screening (Titmus V2a)", layout="wide", initial_sidebar_state="expanded")
-
-query_module = st.query_params.get("module", "")
-if query_module == "teaching":
-    from teaching_media import render_teaching_media
-
-    render_teaching_media(show_home_link=True)
-    st.stop()
+st.set_page_config(page_title="Vision Screening (Titmus V2a)", layout="wide")
 
 st.title("แบบฟอร์มบันทึกผลตรวจสมรรถภาพการมองเห็น (Electronic) — Titmus V2a")
-st.markdown("[เปิดสื่อการสอน Interactive สำหรับนักศึกษาฝึกงาน](?module=teaching)")
 _set_default_state()
 if st.session_state.get("pending_payload") is not None:
     apply_payload_to_state(st.session_state["pending_payload"])
