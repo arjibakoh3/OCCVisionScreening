@@ -925,10 +925,7 @@ def _firebase_label(doc) -> str:
 st.set_page_config(page_title="Vision Screening (Titmus V2a)", layout="wide", initial_sidebar_state="expanded")
 
 st.title("แบบฟอร์มบันทึกผลตรวจสมรรถภาพการมองเห็น (Electronic) — Titmus V2a")
-if hasattr(st, "page_link"):
-    st.page_link("pages/01_Interactive_Teaching_Media.py", label="เปิดสื่อการสอน Interactive สำหรับนักศึกษาฝึกงาน")
-else:
-    st.markdown("[เปิดสื่อการสอน Interactive สำหรับนักศึกษาฝึกงาน](./Interactive_Teaching_Media)")
+st.markdown("[เปิดสื่อการสอน Interactive สำหรับนักศึกษาฝึกงาน](./Interactive_Teaching_Media)")
 _set_default_state()
 if st.session_state.get("pending_payload") is not None:
     apply_payload_to_state(st.session_state["pending_payload"])
