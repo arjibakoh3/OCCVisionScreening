@@ -6,6 +6,15 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+## Standalone teaching media
+สื่อการสอนแบบ interactive สำหรับนักศึกษาฝึกงาน แยกจากแอปบันทึกผลหลัก:
+
+```bash
+streamlit run teaching_media.py
+```
+
+ไฟล์ `teaching_media.py` ใช้ logic กลางจาก `vision_logic.py` สำหรับเกณฑ์กลุ่มงาน, mapping VA/stereo, exam mode และการแปลผล pass/fail
+
 ## Deploy to Streamlit Community Cloud
 1) Create a GitHub repo and push this folder.
 2) Go to https://share.streamlit.io (or Streamlit Cloud).
