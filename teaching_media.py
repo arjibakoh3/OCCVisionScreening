@@ -432,10 +432,11 @@ def _render_quiz_tab() -> None:
         st.metric("คะแนน", f"{correct_count}/{len(quiz)}")
 
 
-def main() -> None:
-    st.set_page_config(page_title="Teaching Media - Vision Screening", layout="wide")
+def render_teaching_media(show_home_link: bool = False) -> None:
     _init_state()
 
+    if show_home_link:
+        st.markdown("[กลับหน้าบันทึกผลตรวจ](./)")
     st.title("Interactive Teaching Media: Vision Screening")
     st.caption("โมดูล standalone สำหรับสอนนักศึกษาฝึกงาน โดยใช้ logic การแปลผลเดียวกับระบบตรวจสมรรถภาพการมองเห็น")
 
@@ -450,6 +451,11 @@ def main() -> None:
         _render_scenarios_tab()
     with tabs[4]:
         _render_quiz_tab()
+
+
+def main() -> None:
+    st.set_page_config(page_title="Teaching Media - Vision Screening", layout="wide")
+    render_teaching_media()
 
 
 if __name__ == "__main__":
